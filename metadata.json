@@ -1,0 +1,5 @@
+{
+  "name": "Gerenciador de Torneio de Xadrez",
+  "description": "Um aplicativo para gerenciar jogadores, etapas e pontuações de um torneio de xadrez, calculando a classificação final dos participantes.",
+  "requestFramePermissions": []
+}
