@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Player, Stage, Score, View, Category } from './types';
 import Header from './components/Header';
 import Standings from './components/Standings';
@@ -27,6 +27,7 @@ const App: React.FC = () => {
   ]);
   const [currentView, setCurrentView] = useState<View>('standings');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [playerName, setPlayerName] = useState('');
@@ -111,6 +112,62 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentView('standings');
+  };
+
+  const handleExportData = () => {
+    const dataToExport = {
+      players,
+      categories,
+      stages,
+      scores,
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(dataToExport, null, 2)
+    )}`;
+    const link = document.createElement("a");
+    link.href = jsonString;
+    link.download = "dados-torneio-xadrez.json";
+    link.click();
+    link.remove();
+  };
+  
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') throw new Error("File content is not readable");
+        
+        const data = JSON.parse(text);
+
+        // Basic validation to check if the keys exist
+        if (data.players && data.categories && data.stages && data.scores) {
+            setPlayers(data.players);
+            setCategories(data.categories);
+            setStages(data.stages);
+            setScores(data.scores);
+            alert("Dados importados com sucesso!");
+        } else {
+            throw new Error("Arquivo JSON inválido ou com formato incorreto.");
+        }
+      } catch (error) {
+        console.error("Erro ao importar dados:", error);
+        alert(`Não foi possível importar os dados. Verifique o arquivo.\nErro: ${error instanceof Error ? error.message : 'Desconhecido'}`);
+      } finally {
+        // Reset file input value to allow re-uploading the same file
+        if (event.target) {
+            event.target.value = '';
+        }
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handlePlayerSubmit = (e: React.FormEvent) => {
@@ -501,8 +558,17 @@ const App: React.FC = () => {
         setCurrentView={setCurrentView} 
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
+        onImport={handleImportClick}
+        onExport={handleExportData}
       />
       <main className="container mx-auto p-4 md:p-8">
+        <input 
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+            accept="application/json"
+        />
         {renderView()}
       </main>
     </div>

@@ -1,15 +1,17 @@
 import React from 'react';
 import { View } from '../types';
-import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon } from './icons';
+import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon, UploadIcon, DownloadIcon } from './icons';
 
 interface HeaderProps {
   currentView: View;
   setCurrentView: (view: View) => void;
   isAuthenticated: boolean;
   onLogout: () => void;
+  onImport: () => void;
+  onExport: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenticated, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenticated, onLogout, onImport, onExport }) => {
   const navItems: { view: Exclude<View, 'login'>; label: string; icon: React.ReactElement }[] = [
     { view: 'players', label: 'Jogadores', icon: <UsersIcon /> },
     { view: 'categories', label: 'Categorias', icon: <TagIcon /> },
@@ -42,6 +44,20 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenti
                   {label}
                 </button>
               ))}
+              <button
+                onClick={onImport}
+                className="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-teal-600/80 text-white hover:bg-teal-500"
+              >
+                <UploadIcon />
+                Importar
+              </button>
+              <button
+                onClick={onExport}
+                className="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-sky-600/80 text-white hover:bg-sky-500"
+              >
+                <DownloadIcon />
+                Exportar
+              </button>
               <button
                 onClick={onLogout}
                 className="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-red-600/80 text-white hover:bg-red-500"
