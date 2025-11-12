@@ -1,15 +1,16 @@
 import React from 'react';
 import { View } from '../types';
-import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon } from './icons';
+import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon } from './icons';
 
 interface HeaderProps {
   currentView: View;
   setCurrentView: (view: View) => void;
+  isAuthenticated: boolean;
+  onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
-  // FIX: Replaced JSX.Element with React.ReactElement to resolve "Cannot find namespace 'JSX'" error.
-  const navItems: { view: View; label: string; icon: React.ReactElement }[] = [
+const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenticated, onLogout }) => {
+  const navItems: { view: Exclude<View, 'login'>; label: string; icon: React.ReactElement }[] = [
     { view: 'players', label: 'Jogadores', icon: <UsersIcon /> },
     { view: 'categories', label: 'Categorias', icon: <TagIcon /> },
     { view: 'stages', label: 'Etapas', icon: <FlagIcon /> },
@@ -24,21 +25,59 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
           <ChessKnightIcon />
           <h1 className="text-2xl font-bold text-white ml-3">Torneio de Xadrez</h1>
         </div>
-        <nav className="flex flex-wrap justify-center gap-2">
-          {navItems.map(({ view, label, icon }) => (
-            <button
-              key={view}
-              onClick={() => setCurrentView(view)}
-              className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                currentView === view
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
+        <nav className="flex flex-wrap justify-center items-center gap-2">
+          {isAuthenticated ? (
+            <>
+              {navItems.map(({ view, label, icon }) => (
+                <button
+                  key={view}
+                  onClick={() => setCurrentView(view)}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    currentView === view
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+              <button
+                onClick={onLogout}
+                className="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-red-600/80 text-white hover:bg-red-500"
+              >
+                <LogoutIcon />
+                Sair
+              </button>
+            </>
+          ) : (
+            <>
+               <button
+                  key="standings"
+                  onClick={() => setCurrentView('standings')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    currentView === 'standings'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  <TrophyIcon className="w-5 h-5 mr-2" />
+                  Classificação
+                </button>
+                <button
+                  key="login"
+                  onClick={() => setCurrentView('login')}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                    currentView === 'login'
+                      ? 'bg-sky-600 text-white shadow-md'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  <LoginIcon />
+                  Login
+                </button>
+            </>
+          )}
         </nav>
       </div>
     </header>

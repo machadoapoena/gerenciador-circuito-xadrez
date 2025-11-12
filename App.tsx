@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Player, Stage, Score, View, Category } from './types';
 import Header from './components/Header';
 import Standings from './components/Standings';
+import Login from './components/Login';
 import { PlusIcon, TrashIcon, PencilIcon } from './components/icons';
 
 const App: React.FC = () => {
@@ -25,6 +26,7 @@ const App: React.FC = () => {
       { id: 'sc4', playerId: 'p2', stageId: 's2', points: 12 },
   ]);
   const [currentView, setCurrentView] = useState<View>('standings');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Form states
   const [playerName, setPlayerName] = useState('');
@@ -95,6 +97,20 @@ const App: React.FC = () => {
       setPlayerPoints({});
     }
   }, [selectedStageIdForScoring]);
+
+  const handleLogin = (user: string, pass: string) => {
+    if (user === 'admin' && pass === 'a120780') {
+      setIsAuthenticated(true);
+      setCurrentView('players');
+    } else {
+      alert('Usuário ou senha inválidos.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentView('standings');
+  };
 
   const handlePlayerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,25 +211,20 @@ const App: React.FC = () => {
 
     Object.entries(playerPoints).forEach(([playerId, pointsStr]) => {
       const existingScoreIndex = nextScores.findIndex(s => s.playerId === playerId && s.stageId === selectedStageIdForScoring);
-      // FIX: Explicitly convert pointsStr to a string. `Object.entries` on a
-      // record type can infer the value as `unknown`, causing type errors.
       const pointsStrValue = String(pointsStr);
       const points = pointsStrValue.trim() === '' ? null : parseInt(pointsStrValue, 10);
 
       if (existingScoreIndex !== -1) { // Score exists
         const existingScore = nextScores[existingScoreIndex];
         if (points === null || isNaN(points)) {
-          // Delete score if input is cleared
           nextScores.splice(existingScoreIndex, 1);
           changed = true;
         } else if (existingScore.points !== points) {
-          // Update score if points changed
           nextScores[existingScoreIndex] = { ...existingScore, points: points };
           changed = true;
         }
       } else { // Score doesn't exist
         if (points !== null && !isNaN(points)) {
-          // Add new score
           const newScore: Score = {
             id: crypto.randomUUID(),
             playerId,
@@ -237,6 +248,11 @@ const App: React.FC = () => {
   };
   
   const renderView = () => {
+    const isPrivateView = currentView !== 'standings';
+    if (isPrivateView && !isAuthenticated) {
+        return <Login onLogin={handleLogin} />;
+    }
+      
     const inputClasses = "w-full bg-slate-800 border border-slate-600 rounded-md p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition disabled:opacity-50";
     const buttonClasses = "flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-md transition-transform duration-200 hover:scale-105";
     const cardClasses = "bg-slate-800 p-6 rounded-lg shadow-xl mb-8";
@@ -464,7 +480,12 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900">
-      <Header currentView={currentView} setCurrentView={setCurrentView} />
+      <Header 
+        currentView={currentView} 
+        setCurrentView={setCurrentView} 
+        isAuthenticated={isAuthenticated}
+        onLogout={handleLogout}
+      />
       <main className="container mx-auto p-4 md:p-8">
         {renderView()}
       </main>

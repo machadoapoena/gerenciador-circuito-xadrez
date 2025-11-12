@@ -39,7 +39,7 @@ export const ClipboardListIcon: React.FC = () => (
 export const ChessKnightIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-indigo-400" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M10 20.4l-3.4 -3.4c-1.6 -1.6 -1.6 -4.2 0 -5.8l5.8 -5.8c1.6 -1.6 4.2 -1.6 5.8 0l3.4 3.4c1.6 1.6 1.6 4.2 0 5.8l-5.8 5.8c-1.6 1.6 -4.2 1.6 -5.8 0z" />
+        <path d="M10 20.4l-3.4 -3.4c-1.6 -1.6 -1.6 -4.2 0 -5.8l5.8 -5.8c-1.6 -1.6 4.2 -1.6 5.8 0l3.4 3.4c1.6 1.6 1.6 4.2 0 5.8l-5.8 5.8c-1.6 1.6 -4.2 1.6 -5.8 0z" />
         <path d="M12 7.2l1 2.8h2.8l-2.2 1.8l.8 2.8l-2.4 -2l-2.4 2l.8 -2.8l-2.2 -1.8h2.8z" />
     </svg>
 );
@@ -54,5 +54,17 @@ export const TagIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 13h10V3L7 13z" />
+    </svg>
+);
+
+export const LogoutIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+);
+
+export const LoginIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 003 3h1a3 3 0 003-3V7a3 3 0 00-3-3h-1a3 3 0 00-3 3v1" />
     </svg>
 );

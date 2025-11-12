@@ -25,4 +25,4 @@ export interface Category {
   name: string;
 }
 
-export type View = 'players' | 'stages' | 'scores' | 'standings' | 'categories';
+export type View = 'players' | 'stages' | 'scores' | 'standings' | 'categories' | 'login';
