@@ -3,7 +3,7 @@ import { Player, Stage, Score, View, Category } from './types';
 import Header from './components/Header';
 import Standings from './components/Standings';
 import Login from './components/Login';
-import { PlusIcon, TrashIcon, PencilIcon } from './components/icons';
+import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon } from './components/icons';
 
 const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([
@@ -29,6 +29,10 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // System settings
+  const [systemName, setSystemName] = useState('Torneio de Xadrez');
+  const [systemLogo, setSystemLogo] = useState<string | null>(null);
+
   // Form states
   const [playerName, setPlayerName] = useState('');
   const [playerCategoryId, setPlayerCategoryId] = useState('');
@@ -49,6 +53,39 @@ const App: React.FC = () => {
   const [playerPoints, setPlayerPoints] = useState<Record<string, string>>({});
   const [filteredStageId, setFilteredStageId] = useState<string>('');
   const [filteredPlayerId, setFilteredPlayerId] = useState<string>('');
+  
+  // State for settings form
+  const [settingsName, setSettingsName] = useState(systemName);
+  const [settingsLogoPreview, setSettingsLogoPreview] = useState<string | null>(systemLogo);
+
+  // Load settings from localStorage on initial render
+  useEffect(() => {
+    try {
+        const savedName = localStorage.getItem('systemName');
+        const savedLogo = localStorage.getItem('systemLogo');
+        if (savedName) setSystemName(JSON.parse(savedName));
+        if (savedLogo) setSystemLogo(JSON.parse(savedLogo));
+    } catch(e) {
+        console.error("Failed to parse settings from localStorage", e);
+    }
+  }, []);
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('systemName', JSON.stringify(systemName));
+    if (systemLogo) {
+      localStorage.setItem('systemLogo', JSON.stringify(systemLogo));
+    } else {
+      localStorage.removeItem('systemLogo');
+    }
+  }, [systemName, systemLogo]);
+
+  useEffect(() => {
+    if (currentView === 'settings') {
+      setSettingsName(systemName);
+      setSettingsLogoPreview(systemLogo);
+    }
+  }, [currentView, systemName, systemLogo]);
 
 
   useEffect(() => {
@@ -546,6 +583,78 @@ const App: React.FC = () => {
         );
       case 'standings':
         return <Standings players={players} scores={scores} categories={categories} stages={stages} />;
+      case 'settings':
+        const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setSettingsLogoPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        const handleSettingsSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+            setSystemName(settingsName);
+            setSystemLogo(settingsLogoPreview);
+            alert('Configurações salvas com sucesso!');
+        };
+        
+        const handleRemoveLogo = () => {
+            setSettingsLogoPreview(null);
+            const fileInput = document.getElementById('systemLogo') as HTMLInputElement;
+            if(fileInput) fileInput.value = "";
+        };
+
+        return (
+            <div className={cardClasses}>
+                <h2 className="text-2xl font-bold mb-6">Configurações do Sistema</h2>
+                <form onSubmit={handleSettingsSubmit} className="space-y-6 max-w-lg mx-auto">
+                    <div>
+                        <label htmlFor="systemName" className="block text-sm font-medium text-slate-300 mb-1">Nome do Sistema</label>
+                        <input
+                            id="systemName"
+                            type="text"
+                            value={settingsName}
+                            onChange={(e) => setSettingsName(e.target.value)}
+                            className={inputClasses}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="systemLogo" className="block text-sm font-medium text-slate-300 mb-1">Logotipo</label>
+                        <div className="flex items-center gap-4">
+                           <div className="flex-shrink-0">
+                             {settingsLogoPreview ? (
+                                <img src={settingsLogoPreview} alt="Preview do logo" className="h-16 w-16 object-contain bg-slate-700 rounded-md p-1"/>
+                             ) : (
+                                <div className="h-16 w-16 bg-slate-700 rounded-md flex items-center justify-center">
+                                    <ChessKnightIcon />
+                                </div>
+                             )}
+                           </div>
+                           <div className="flex-grow">
+                                <input
+                                    id="systemLogo"
+                                    type="file"
+                                    onChange={handleLogoChange}
+                                    className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-600 file:text-slate-200 hover:file:bg-slate-500 transition-colors"
+                                    accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">PNG, JPG, SVG. Recomendado: 1:1.</p>
+                           </div>
+                           {settingsLogoPreview && (
+                            <button type="button" onClick={handleRemoveLogo} className="text-red-400 hover:text-red-300 p-2 rounded-full hover:bg-red-500/20">
+                                <TrashIcon />
+                            </button>
+                           )}
+                        </div>
+                    </div>
+                    <button type="submit" className={`${buttonClasses} w-full`}>Salvar Configurações</button>
+                </form>
+            </div>
+        );
       default:
         return null;
     }
@@ -560,6 +669,8 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onImport={handleImportClick}
         onExport={handleExportData}
+        systemName={systemName}
+        systemLogo={systemLogo}
       />
       <main className="container mx-auto p-4 md:p-8">
         <input 

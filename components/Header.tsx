@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../types';
-import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon, UploadIcon, DownloadIcon } from './icons';
+import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon, UploadIcon, DownloadIcon, SettingsIcon } from './icons';
 
 interface HeaderProps {
   currentView: View;
@@ -9,10 +9,12 @@ interface HeaderProps {
   onLogout: () => void;
   onImport: () => void;
   onExport: () => void;
+  systemName: string;
+  systemLogo: string | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenticated, onLogout, onImport, onExport }) => {
-  const navItems: { view: Exclude<View, 'login'>; label: string; icon: React.ReactElement }[] = [
+const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenticated, onLogout, onImport, onExport, systemName, systemLogo }) => {
+  const navItems: { view: Exclude<View, 'login' | 'settings'>; label: string; icon: React.ReactElement }[] = [
     { view: 'players', label: 'Jogadores', icon: <UsersIcon /> },
     { view: 'categories', label: 'Categorias', icon: <TagIcon /> },
     { view: 'stages', label: 'Etapas', icon: <FlagIcon /> },
@@ -24,8 +26,12 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenti
     <header className="bg-slate-800/50 backdrop-blur-sm p-4 sticky top-0 z-10 shadow-lg shadow-slate-900/50">
       <div className="container mx-auto flex flex-col sm:flex-row justify-between items-center">
         <div className="flex items-center mb-4 sm:mb-0">
-          <ChessKnightIcon />
-          <h1 className="text-2xl font-bold text-white ml-3">Torneio de Xadrez</h1>
+          {systemLogo ? (
+            <img src={systemLogo} alt="Logo" className="h-10 w-10 object-contain" />
+          ) : (
+            <ChessKnightIcon />
+          )}
+          <h1 className="text-2xl font-bold text-white ml-3">{systemName}</h1>
         </div>
         <nav className="flex flex-wrap justify-center items-center gap-2">
           {isAuthenticated ? (
@@ -44,6 +50,18 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenti
                   {label}
                 </button>
               ))}
+              <button
+                key="settings"
+                onClick={() => setCurrentView('settings')}
+                className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                  currentView === 'settings'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                <SettingsIcon />
+                Configurações
+              </button>
               <button
                 onClick={onImport}
                 className="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-teal-600/80 text-white hover:bg-teal-500"
