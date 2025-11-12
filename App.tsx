@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [selectedStageIdForScoring, setSelectedStageIdForScoring] = useState<string>('');
   const [playerPoints, setPlayerPoints] = useState<Record<string, string>>({});
   const [filteredStageId, setFilteredStageId] = useState<string>('');
+  const [filteredPlayerId, setFilteredPlayerId] = useState<string>('');
 
 
   useEffect(() => {
@@ -395,6 +396,7 @@ const App: React.FC = () => {
         
         const filteredScores = scores
             .filter(s => filteredStageId ? s.stageId === filteredStageId : true)
+            .filter(s => filteredPlayerId ? s.playerId === filteredPlayerId : true)
             .sort((a,b) => getStageName(a.stageId).localeCompare(getStageName(b.stageId)) || getPlayerName(a.playerId).localeCompare(getPlayerName(b.playerId)));
 
         return (
@@ -440,17 +442,31 @@ const App: React.FC = () => {
                  </div>
                  <div className={cardClasses}>
                     <h2 className="text-2xl font-bold mb-4">Pontuações Lançadas</h2>
-                    <div className="mb-4">
-                        <label htmlFor="stage-filter" className="block text-sm font-medium text-slate-400 mb-1">Filtrar por Etapa:</label>
-                        <select
-                            id="stage-filter"
-                            value={filteredStageId}
-                            onChange={e => setFilteredStageId(e.target.value)}
-                            className={inputClasses}
-                        >
-                            <option value="">Todas as Etapas</option>
-                            {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                    <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label htmlFor="stage-filter" className="block text-sm font-medium text-slate-400 mb-1">Filtrar por Etapa:</label>
+                            <select
+                                id="stage-filter"
+                                value={filteredStageId}
+                                onChange={e => setFilteredStageId(e.target.value)}
+                                className={inputClasses}
+                            >
+                                <option value="">Todas as Etapas</option>
+                                {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="player-filter" className="block text-sm font-medium text-slate-400 mb-1">Filtrar por Jogador:</label>
+                            <select
+                                id="player-filter"
+                                value={filteredPlayerId}
+                                onChange={e => setFilteredPlayerId(e.target.value)}
+                                className={inputClasses}
+                            >
+                                <option value="">Todos os Jogadores</option>
+                                {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
                     </div>
                     <ul className="space-y-3 max-h-80 overflow-y-auto pr-2">
                         {filteredScores.map(s => (
@@ -465,7 +481,7 @@ const App: React.FC = () => {
                             </div>
                         </li>
                         ))}
-                        {scores.length > 0 && filteredScores.length === 0 && <p className="text-slate-400">Nenhuma pontuação encontrada para esta etapa.</p>}
+                        {scores.length > 0 && filteredScores.length === 0 && <p className="text-slate-400">Nenhuma pontuação encontrada para os filtros selecionados.</p>}
                         {scores.length === 0 && <p className="text-slate-400">Nenhuma pontuação lançada.</p>}
                     </ul>
                  </div>
