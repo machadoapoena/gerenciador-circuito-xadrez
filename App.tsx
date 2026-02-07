@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Player, Stage, Score, View, Category, Title } from './types';
 import Header from './components/Header';
 import Standings from './components/Standings';
@@ -48,6 +48,37 @@ const App: React.FC = () => {
   const [settingsName, setSettingsName] = useState(systemName);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState<string | null>(systemLogo);
 
+  // --- Helpers ---
+  const getPName = (id: string) => players.find(p => p.id === id)?.name || 'Desconhecido';
+  const getSName = (id: string) => stages.find(s => s.id === id)?.name || 'Desconhecido';
+  const getTitleName = (id?: string) => titles.find(t => t.id === id)?.name || '';
+
+  // --- Hooks at Top Level ---
+  const filteredScoresForView = useMemo(() => {
+    let list = [...scores];
+    if (selectedStageIdForScoring && selectedPlayerIdForScoring) {
+      return list.filter(s => String(s.stageId) === String(selectedStageIdForScoring) && String(s.playerId) === String(selectedPlayerIdForScoring));
+    } else if (selectedStageIdForScoring) {
+      return list.filter(s => String(s.stageId) === String(selectedStageIdForScoring)).sort((a, b) => b.points - a.points);
+    } else if (selectedPlayerIdForScoring) {
+      return list.filter(s => String(s.playerId) === String(selectedPlayerIdForScoring));
+    } else {
+      return [...list].reverse().slice(0, 30);
+    }
+  }, [scores, selectedStageIdForScoring, selectedPlayerIdForScoring]);
+
+  const scoreListTitle = useMemo(() => {
+    if (selectedStageIdForScoring && selectedPlayerIdForScoring) return "Ponto Lançado";
+    if (selectedStageIdForScoring) return `Resultados: ${getSName(selectedStageIdForScoring)}`;
+    if (selectedPlayerIdForScoring) return `Histórico de ${getPName(selectedPlayerIdForScoring)}`;
+    return "Histórico Recente";
+  }, [selectedStageIdForScoring, selectedPlayerIdForScoring, players, stages]);
+
+  const existingScoreInForm = useMemo(() => {
+    if (!selectedStageIdForScoring || !selectedPlayerIdForScoring) return null;
+    return scores.find(s => String(s.stageId) === String(selectedStageIdForScoring) && String(s.playerId) === String(selectedPlayerIdForScoring));
+  }, [selectedStageIdForScoring, selectedPlayerIdForScoring, scores]);
+
   // Fetch all data from Supabase on mount
   useEffect(() => {
     const loadAllData = async () => {
@@ -95,22 +126,6 @@ const App: React.FC = () => {
     loadAllData();
   }, []);
 
-  useEffect(() => {
-    if (currentView === 'settings') {
-      setSettingsName(systemName);
-      setSettingsLogoPreview(systemLogo);
-    }
-  }, [currentView, systemName, systemLogo]);
-
-  useEffect(() => {
-    if (selectedStageIdForScoring && selectedPlayerIdForScoring) {
-      const existing = scores.find(s => s.stageId === selectedStageIdForScoring && s.playerId === selectedPlayerIdForScoring);
-      setSingleScoreValue(existing ? existing.points.toString() : '');
-    } else {
-      setSingleScoreValue('');
-    }
-  }, [selectedStageIdForScoring, selectedPlayerIdForScoring, scores]);
-
   const handleLogin = (user: string, pass: string) => {
     if (user === 'admin' && pass === 'a120780') {
       setIsAuthenticated(true);
@@ -140,7 +155,7 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!playerName) return;
 
-    const data = { 
+    const playerData = { 
       name: playerName, 
       categoryId: playerCategoryId || null, 
       birthDate: playerBirthDate || null, 
@@ -154,15 +169,14 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       if (editingPlayer) {
-        const { error } = await supabase.from('players').update(data).eq('id', editingPlayer.id);
+        const { error } = await supabase.from('players').update(playerData).eq('id', editingPlayer.id);
         if (error) throw error;
-        setPlayers(players.map(p => p.id === editingPlayer.id ? { ...p, ...data } as Player : p));
+        setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...playerData } as Player : p));
         setEditingPlayer(null);
       } else {
-        const newPlayer = { id: crypto.randomUUID(), ...data };
-        const { error } = await supabase.from('players').insert(newPlayer);
+        const { data, error } = await supabase.from('players').insert(playerData).select().single();
         if (error) throw error;
-        setPlayers([...players, newPlayer as Player]);
+        if (data) setPlayers(prev => [...prev, data as Player]);
       }
       
       setPlayerName('');
@@ -185,17 +199,16 @@ const App: React.FC = () => {
     if (!stageName) return;
     setIsLoading(true);
     try {
-      const data = { name: stageName, url: stageUrl || null };
+      const stageData = { name: stageName, url: stageUrl || null };
       if (editingStage) {
-        const { error } = await supabase.from('stages').update(data).eq('id', editingStage.id);
+        const { error } = await supabase.from('stages').update(stageData).eq('id', editingStage.id);
         if (error) throw error;
-        setStages(stages.map(s => s.id === editingStage.id ? { ...s, ...data } : s));
+        setStages(prev => prev.map(s => s.id === editingStage.id ? { ...s, ...stageData } : s));
         setEditingStage(null);
       } else {
-        const newStage = { id: crypto.randomUUID(), ...data };
-        const { error } = await supabase.from('stages').insert(newStage);
+        const { data, error } = await supabase.from('stages').insert(stageData).select().single();
         if (error) throw error;
-        setStages([...stages, newStage as Stage]);
+        if (data) setStages(prev => [...prev, data as Stage]);
       }
       setStageName('');
       setStageUrl('');
@@ -211,10 +224,9 @@ const App: React.FC = () => {
     if (!categoryName) return;
     setIsLoading(true);
     try {
-      const newCat = { id: crypto.randomUUID(), name: categoryName };
-      const { error } = await supabase.from('categories').insert(newCat);
+      const { data, error } = await supabase.from('categories').insert({ name: categoryName }).select().single();
       if (error) throw error;
-      setCategories([...categories, newCat]);
+      if (data) setCategories(prev => [...prev, data]);
       setCategoryName('');
     } catch (err: any) {
       alert('Erro ao criar categoria: ' + err.message);
@@ -228,13 +240,30 @@ const App: React.FC = () => {
     if (!titleName) return;
     setIsLoading(true);
     try {
-      const newTitle = { id: crypto.randomUUID(), name: titleName };
-      const { error } = await supabase.from('titles').insert(newTitle);
+      const { data, error } = await supabase.from('titles').insert({ name: titleName }).select().single();
       if (error) throw error;
-      setTitles([...titles, newTitle]);
+      if (data) setTitles(prev => [...prev, data]);
       setTitleName('');
     } catch (err: any) {
       alert('Erro ao criar titulação: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const performDeleteScore = async (scoreId: string | number) => {
+    if (!scoreId) return false;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.from('scores').delete().eq('id', scoreId);
+      if (error) throw error;
+      
+      setScores(prev => prev.filter(s => String(s.id) !== String(scoreId)));
+      return true;
+    } catch (err: any) {
+      console.error('Erro ao excluir do Supabase:', err);
+      alert('Erro ao excluir pontuação: ' + err.message);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -247,27 +276,28 @@ const App: React.FC = () => {
     const points = parseFloat(singleScoreValue);
     setIsLoading(true);
     try {
-      const existing = scores.find(s => s.playerId === selectedPlayerIdForScoring && s.stageId === selectedStageIdForScoring);
+      const existing = scores.find(s => String(s.playerId) === String(selectedPlayerIdForScoring) && String(s.stageId) === String(selectedStageIdForScoring));
       
       if (isNaN(points)) {
         if (existing) {
-          const { error } = await supabase.from('scores').delete().eq('id', existing.id);
-          if (error) throw error;
-          setScores(scores.filter(x => x.id !== existing.id));
+          if (confirm('A pontuação está vazia. Deseja realmente excluir este registro?')) {
+            await performDeleteScore(existing.id);
+          }
         }
       } else {
         if (existing) {
           const { error } = await supabase.from('scores').update({ points }).eq('id', existing.id);
           if (error) throw error;
-          setScores(scores.map(s => s.id === existing.id ? { ...s, points } : s));
+          setScores(prev => prev.map(s => String(s.id) === String(existing.id) ? { ...s, points } : s));
         } else {
-          const newScore = { id: crypto.randomUUID(), playerId: selectedPlayerIdForScoring, stageId: selectedStageIdForScoring, points };
-          const { error } = await supabase.from('scores').insert(newScore);
+          const scoreData = { playerId: selectedPlayerIdForScoring, stageId: selectedStageIdForScoring, points };
+          const { data, error } = await supabase.from('scores').insert(scoreData).select().single();
           if (error) throw error;
-          setScores([...scores, newScore]);
+          if (data) setScores(prev => [...prev, data]);
         }
       }
       setSelectedPlayerIdForScoring('');
+      setSingleScoreValue('');
     } catch (err: any) {
       alert('Erro ao salvar pontos: ' + err.message);
     } finally {
@@ -308,8 +338,8 @@ const App: React.FC = () => {
       
     const inputClasses = "w-full bg-slate-800 border border-slate-600 rounded-md p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition placeholder:text-slate-500";
     const buttonClasses = "flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-md transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed";
+    const dangerButtonClasses = "flex items-center justify-center bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-md transition-transform duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed";
     const cardClasses = "bg-slate-800 p-6 rounded-lg shadow-xl mb-8";
-    const getTitleName = (id?: string) => titles.find(t => t.id === id)?.name || '';
 
     switch (currentView) {
       case 'login': return <Login onLogin={handleLogin} />;
@@ -406,10 +436,19 @@ const App: React.FC = () => {
                           setPlayerTitleId(p.titleId || ''); 
                         }} className="text-sky-400 hover:text-sky-300 p-1"><PencilIcon/></button>
                         <button onClick={async () => { 
-                          if(confirm('Excluir jogador?')) {
+                          if(confirm('Tem certeza que deseja excluir este jogador? Todas as pontuações dele serão removidas.')) {
                             setIsLoading(true);
-                            const { error } = await supabase.from('players').delete().eq('id', p.id);
-                            if (!error) setPlayers(players.filter(x => x.id !== p.id));
+                            try {
+                              const { error } = await supabase.from('players').delete().eq('id', p.id);
+                              if (error) {
+                                alert('Erro ao excluir jogador: ' + error.message);
+                              } else {
+                                setPlayers(prev => prev.filter(x => x.id !== p.id));
+                                setScores(prev => prev.filter(s => String(s.playerId) !== String(p.id)));
+                              }
+                            } catch (err: any) {
+                              alert('Erro inesperado: ' + err.message);
+                            }
                             setIsLoading(false);
                           }
                         }} className="text-red-400 hover:text-red-300 p-1"><TrashIcon/></button>
@@ -435,11 +474,18 @@ const App: React.FC = () => {
                   <li key={c.id} className="flex justify-between p-3 bg-slate-700 rounded-md">
                     {c.name}
                     <button onClick={async () => {
-                      setIsLoading(true);
-                      await supabase.from('categories').delete().eq('id', c.id);
-                      setCategories(categories.filter(x => x.id !== c.id));
-                      setIsLoading(false);
-                    }} className="text-red-400"><TrashIcon/></button>
+                      if (confirm('Deseja excluir esta categoria? Jogadores nesta categoria ficarão sem categoria.')) {
+                        setIsLoading(true);
+                        const { error } = await supabase.from('categories').delete().eq('id', c.id);
+                        if (error) {
+                          alert('Erro ao excluir categoria: ' + error.message);
+                        } else {
+                          setCategories(prev => prev.filter(x => x.id !== c.id));
+                          setPlayers(prev => prev.map(p => p.categoryId === c.id ? { ...p, categoryId: '' } : p));
+                        }
+                        setIsLoading(false);
+                      }
+                    }} className="text-red-400 hover:text-red-300 transition-colors"><TrashIcon/></button>
                   </li>
                 ))}
               </ul>
@@ -460,11 +506,18 @@ const App: React.FC = () => {
                   <li key={t.id} className="flex justify-between p-3 bg-slate-700 rounded-md">
                     <span className="text-amber-400 font-bold">{t.name}</span>
                     <button onClick={async () => {
-                      setIsLoading(true);
-                      await supabase.from('titles').delete().eq('id', t.id);
-                      setTitles(titles.filter(x => x.id !== t.id));
-                      setIsLoading(false);
-                    }} className="text-red-400"><TrashIcon/></button>
+                      if (confirm('Deseja excluir esta titulação?')) {
+                        setIsLoading(true);
+                        const { error } = await supabase.from('titles').delete().eq('id', t.id);
+                        if (error) {
+                          alert('Erro ao excluir titulação: ' + error.message);
+                        } else {
+                          setTitles(prev => prev.filter(x => x.id !== t.id));
+                          setPlayers(prev => prev.map(p => p.titleId === t.id ? { ...p, titleId: '' } : p));
+                        }
+                        setIsLoading(false);
+                      }
+                    }} className="text-red-400 hover:text-red-300 transition-colors"><TrashIcon/></button>
                   </li>
                 ))}
               </ul>
@@ -508,10 +561,15 @@ const App: React.FC = () => {
                           setStageUrl(s.url || ''); 
                         }} className="text-sky-400 hover:text-sky-300 p-1"><PencilIcon/></button>
                       <button onClick={async () => {
-                        if (confirm('Deseja excluir esta etapa?')) {
+                        if (confirm('Deseja excluir esta etapa? Todas as pontuações lançadas nela serão apagadas.')) {
                           setIsLoading(true);
-                          await supabase.from('stages').delete().eq('id', s.id);
-                          setStages(stages.filter(x => x.id !== s.id));
+                          const { error } = await supabase.from('stages').delete().eq('id', s.id);
+                          if (error) {
+                            alert('Erro ao excluir etapa: ' + error.message);
+                          } else {
+                            setStages(prev => prev.filter(x => x.id !== s.id));
+                            setScores(prev => prev.filter(sc => String(sc.stageId) !== String(s.id)));
+                          }
                           setIsLoading(false);
                         }
                       }} className="text-red-400 hover:text-red-300 p-1"><TrashIcon/></button>
@@ -523,8 +581,6 @@ const App: React.FC = () => {
           </div>
         );
       case 'scores':
-        const getPName = (id: string) => players.find(p => p.id === id)?.name || 'Desconhecido';
-        const getSName = (id: string) => stages.find(s => s.id === id)?.name || 'Desconhecido';
         return (
           <div className="grid md:grid-cols-2 gap-8">
             <form onSubmit={handleSingleScoreSubmit} className={cardClasses}>
@@ -543,19 +599,17 @@ const App: React.FC = () => {
                   </select>
                 </div>
 
-                {selectedStageIdForScoring && (
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-1">2. Selecione o Jogador</label>
-                    <select 
-                      value={selectedPlayerIdForScoring} 
-                      onChange={e => setSelectedPlayerIdForScoring(e.target.value)} 
-                      className={inputClasses}
-                    >
-                      <option value="">Selecione o Jogador</option>
-                      {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">2. Selecione o Jogador</label>
+                  <select 
+                    value={selectedPlayerIdForScoring} 
+                    onChange={e => setSelectedPlayerIdForScoring(e.target.value)} 
+                    className={inputClasses}
+                  >
+                    <option value="">Selecione o Jogador</option>
+                    {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
 
                 {selectedStageIdForScoring && selectedPlayerIdForScoring && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
@@ -571,6 +625,24 @@ const App: React.FC = () => {
                         autoFocus
                       />
                       <button type="submit" disabled={isLoading} className={`${buttonClasses} px-8`}>Salvar</button>
+                      {existingScoreInForm && (
+                        <button 
+                          type="button" 
+                          onClick={async () => {
+                            if (confirm('Deseja realmente excluir esta pontuação?')) {
+                              const success = await performDeleteScore(existingScoreInForm.id);
+                              if (success) {
+                                setSelectedPlayerIdForScoring('');
+                                setSingleScoreValue('');
+                              }
+                            }
+                          }}
+                          disabled={isLoading} 
+                          className={dangerButtonClasses}
+                        >
+                          Excluir
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -578,32 +650,53 @@ const App: React.FC = () => {
             </form>
 
             <div className={cardClasses}>
-              <h2 className="text-2xl font-bold mb-4">Histórico Recente</h2>
-              <ul className="space-y-2 max-h-[400px] overflow-y-auto">
-                {[...scores].reverse().map(s => (
-                  <li key={s.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md border-l-4 border-indigo-500">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{getPName(s.playerId)}</span>
-                      <span className="text-xs text-slate-400 uppercase tracking-wider">{getSName(s.stageId)}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold text-indigo-400 text-lg">{s.points} pts</span>
-                      <button 
-                        onClick={async () => {
-                          if (confirm('Deseja remover esta pontuação?')) {
-                            setIsLoading(true);
-                            await supabase.from('scores').delete().eq('id', s.id);
-                            setScores(scores.filter(x => x.id !== s.id));
-                            setIsLoading(false);
-                          }
-                        }}
-                        className="text-red-400 hover:text-red-300 p-1"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  </li>
-                ))}
+              <h2 className="text-2xl font-bold mb-4 flex justify-between items-center">
+                <span>{scoreListTitle}</span>
+                <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400 uppercase tracking-tighter">
+                  {filteredScoresForView.length} registros
+                </span>
+              </h2>
+              <ul className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                {filteredScoresForView.length === 0 ? (
+                  <li className="text-center py-10 text-slate-500 italic">Nenhum registro encontrado para este filtro.</li>
+                ) : (
+                  filteredScoresForView.map(s => (
+                    <li key={s.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md border-l-4 border-indigo-500 hover:bg-slate-600/50 transition-colors">
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="font-medium truncate">{getPName(s.playerId)}</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider">{getSName(s.stageId)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-indigo-400 text-lg tabular-nums mr-2">{s.points} pts</span>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => {
+                              setSelectedStageIdForScoring(s.stageId);
+                              setSelectedPlayerIdForScoring(s.playerId);
+                              setSingleScoreValue(s.points.toString());
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="text-sky-400 hover:text-sky-300 p-2 bg-slate-800 rounded-md transition-colors"
+                            title="Editar pontuação"
+                          >
+                            <PencilIcon />
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (confirm('Deseja remover esta pontuação?')) {
+                                await performDeleteScore(s.id);
+                              }
+                            }}
+                            className="text-red-400 hover:text-red-300 p-2 bg-slate-800 rounded-md transition-colors"
+                            title="Excluir pontuação"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           </div>

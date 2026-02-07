@@ -18,7 +18,7 @@ export interface Stage {
 }
 
 export interface Score {
-  id: string;
+  id: string | number;
   playerId: string;
   stageId: string;
   points: number;
