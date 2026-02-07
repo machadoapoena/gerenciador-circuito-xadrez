@@ -137,11 +137,11 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                     {player.name}
                   </td>
                   <td className="p-4">
-                    <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
                       <span className="text-slate-300">{getCategoryName(player.categoryId)}</span>
                       {isCategoryLeader && player.categoryId && (
-                        <span className="text-[10px] uppercase tracking-tighter font-bold text-amber-400 mt-0.5 flex items-center">
-                          <span className="mr-1">🏆</span> Melhor da Categoria
+                        <span title="Melhor da Categoria" className="text-amber-400 drop-shadow-sm filter brightness-110">
+                          🏆
                         </span>
                       )}
                     </div>
