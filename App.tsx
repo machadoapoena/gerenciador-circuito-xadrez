@@ -5,7 +5,7 @@ import Header from './components/Header';
 import Standings from './components/Standings';
 import Login from './components/Login';
 import { supabase } from './supabase';
-import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon } from './components/icons';
+import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon } from './components/icons';
 
 const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // System settings
   const [systemName, setSystemName] = useState('Torneio de Xadrez');
@@ -34,13 +35,8 @@ const App: React.FC = () => {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
   const [stageName, setStageName] = useState('');
-  const [editingStage, setEditingStage] = useState<Stage | null>(null);
-  
   const [categoryName, setCategoryName] = useState('');
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-
   const [titleName, setTitleName] = useState('');
-  const [editingTitle, setEditingTitle] = useState<Title | null>(null);
 
   const [selectedStageIdForScoring, setSelectedStageIdForScoring] = useState<string>('');
   const [selectedPlayerIdForScoring, setSelectedPlayerIdForScoring] = useState<string>('');
@@ -78,8 +74,14 @@ const App: React.FC = () => {
         
         const nameSet = sets?.find(s => s.key === 'systemName');
         const logoSet = sets?.find(s => s.key === 'systemLogo');
-        if (nameSet) setSystemName(nameSet.value);
-        if (logoSet) setSystemLogo(logoSet.value);
+        if (nameSet) {
+          setSystemName(nameSet.value);
+          setSettingsName(nameSet.value);
+        }
+        if (logoSet) {
+          setSystemLogo(logoSet.value);
+          setSettingsLogoPreview(logoSet.value);
+        }
       } catch (error) {
         console.error('Erro ao carregar dados do Supabase:', error);
       } finally {
@@ -118,6 +120,17 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentView('standings');
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettingsLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handlePlayerSubmit = async (e: React.FormEvent) => {
@@ -563,9 +576,55 @@ const App: React.FC = () => {
         return (
           <div className={cardClasses}>
             <h2 className="text-2xl font-bold mb-6">Configurações do Torneio</h2>
-            <form onSubmit={handleSettingsSubmit} className="space-y-4">
-              <input type="text" value={settingsName} onChange={e => setSettingsName(e.target.value)} className={inputClasses} placeholder="Nome do Torneio" />
-              <button type="submit" disabled={isLoading} className={`${buttonClasses} w-full`}>Atualizar Dados</button>
+            <form onSubmit={handleSettingsSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Nome do Torneio</label>
+                <input type="text" value={settingsName} onChange={e => setSettingsName(e.target.value)} className={inputClasses} placeholder="Ex: Open de Xadrez 2024" />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Logotipo do Torneio</label>
+                <div className="flex items-center gap-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                  <div className="h-20 w-20 bg-slate-800 rounded-md flex items-center justify-center border border-slate-600 overflow-hidden">
+                    {settingsLogoPreview ? (
+                      <img src={settingsLogoPreview} alt="Preview" className="h-full w-full object-contain" />
+                    ) : (
+                      <ChessKnightIcon />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <button 
+                      type="button" 
+                      onClick={() => logoInputRef.current?.click()}
+                      className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold py-2 px-4 rounded-md transition flex items-center gap-2"
+                    >
+                      <UploadIcon />
+                      Selecionar Imagem
+                    </button>
+                    <p className="text-xs text-slate-500 mt-2">Formatos aceitos: PNG, JPG, SVG. Tamanho recomendado: 128x128px.</p>
+                    <input 
+                      type="file" 
+                      ref={logoInputRef} 
+                      onChange={handleLogoChange} 
+                      className="hidden" 
+                      accept="image/*" 
+                    />
+                  </div>
+                  {settingsLogoPreview && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSettingsLogoPreview(null)}
+                      className="text-red-400 hover:text-red-300 text-sm font-medium"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <button type="submit" disabled={isLoading} className={`${buttonClasses} w-full py-4 text-lg`}>
+                Salvar Configurações
+              </button>
             </form>
           </div>
         );
