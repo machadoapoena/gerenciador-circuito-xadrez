@@ -238,7 +238,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
               let lowestScoreStruck = false;
               const tName = getTitleName(player.titleId);
               const rank = index + 1;
-              const showPhoto = rank <= 10 || isCategoryLeader;
+              const showAvatar = rank <= 10 || isCategoryLeader;
               
               return (
                 <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
@@ -254,18 +254,23 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                       onMouseMove={handleMouseMove}
                       onMouseLeave={() => setHoveredPlayerId(null)}
                     >
-                      <div className={`w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border transition-all duration-300 ${
-                        rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 
-                        isCategoryLeader ? 'border-amber-400/50' : 'border-slate-500'
-                      } group-hover/player:border-white`}>
-                        { (showPhoto && player.photoUrl) ? (
-                          <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
-                              <UsersIcon />
-                          </div>
-                        )}
-                      </div>
+                      {showAvatar ? (
+                        <div className={`w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border transition-all duration-300 ${
+                          rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 
+                          isCategoryLeader ? 'border-amber-400/50' : 'border-slate-500'
+                        } group-hover/player:border-white`}>
+                          { player.photoUrl ? (
+                            <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
+                                <UsersIcon />
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // Espaçador para manter o alinhamento dos nomes quando o avatar não é mostrado
+                        <div className="w-8 flex-shrink-0" />
+                      )}
                       <div className="flex flex-col">
                         <span className={`text-sm md:text-base transition-colors ${rank <= 3 ? 'font-bold' : ''} group-hover/player:text-indigo-300`}>
                           {tName && <span className="text-amber-400 font-bold mr-1">{tName}</span>}
@@ -321,7 +326,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           {selectedStageView === 'all' && (
             <>* A <strong>Classificação Geral</strong> utiliza a regra de descarte: soma-se os pontos de todas as etapas e subtrai-se o pior resultado individual (para jogadores com 2 ou mais participações).<br/></>
           )}
-          As fotos são exibidas para os 10 primeiros colocados e para os líderes de cada categoria. Passe o mouse sobre o nome para ver detalhes.
+          As fotos e ícones de destaque são exibidos apenas para os 10 primeiros colocados e líderes de categoria. Passe o mouse sobre o nome para ver detalhes.
         </p>
       </div>
     </div>
