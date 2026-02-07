@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { View } from '../types';
-import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon, UploadIcon, DownloadIcon, SettingsIcon } from './icons';
+import { UsersIcon, FlagIcon, ClipboardListIcon, TrophyIcon, ChessKnightIcon, TagIcon, LogoutIcon, LoginIcon, UploadIcon, DownloadIcon, SettingsIcon, AwardIcon } from './icons';
 
 interface HeaderProps {
   currentView: View;
@@ -17,6 +18,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView, isAuthenti
   const navItems: { view: Exclude<View, 'login' | 'settings'>; label: string; icon: React.ReactElement }[] = [
     { view: 'players', label: 'Jogadores', icon: <UsersIcon /> },
     { view: 'categories', label: 'Categorias', icon: <TagIcon /> },
+    { view: 'titles', label: 'Titulações', icon: <AwardIcon /> },
     { view: 'stages', label: 'Etapas', icon: <FlagIcon /> },
     { view: 'scores', label: 'Pontuações', icon: <ClipboardListIcon /> },
     { view: 'standings', label: 'Classificação', icon: <TrophyIcon className="w-5 h-5 mr-2" /> },

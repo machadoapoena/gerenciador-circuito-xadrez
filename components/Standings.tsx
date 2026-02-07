@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Player, Score, Category, Stage } from '../types';
+import { Player, Score, Category, Stage, Title } from '../types';
 import { TrophyIcon } from './icons';
 
 interface StandingsProps {
@@ -8,11 +8,16 @@ interface StandingsProps {
   scores: Score[];
   categories: Category[];
   stages: Stage[];
+  titles: Title[];
 }
 
-const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stages }) => {
+const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stages, titles }) => {
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.name || 'N/A';
+  }
+  
+  const getTitleName = (titleId?: string) => {
+    return titles.find(t => t.id === titleId)?.name || '';
   }
 
   const rankedPlayers = useMemo(() => {
@@ -119,6 +124,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           <tbody>
             {rankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader }, index) => {
               let lowestScoreStruck = false;
+              const tName = getTitleName(player.titleId);
               return (
                 <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
                   <td className="p-4">
@@ -127,7 +133,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                     </span>
                   </td>
                   <td className="p-4 font-medium whitespace-nowrap">
-                    {player.title && <span className="text-amber-400 font-bold mr-1">{player.title}</span>}
+                    {tName && <span className="text-amber-400 font-bold mr-1">{tName}</span>}
                     {player.name}
                   </td>
                   <td className="p-4">

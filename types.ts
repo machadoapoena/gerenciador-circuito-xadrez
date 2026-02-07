@@ -7,7 +7,7 @@ export interface Player {
   cbxId: string;
   fideId: string;
   email: string;
-  title?: string;
+  titleId?: string; // Changed from title string to titleId
 }
 
 export interface Stage {
@@ -27,4 +27,9 @@ export interface Category {
   name: string;
 }
 
-export type View = 'players' | 'stages' | 'scores' | 'standings' | 'categories' | 'login' | 'settings';
+export interface Title {
+  id: string;
+  name: string;
+}
+
+export type View = 'players' | 'stages' | 'scores' | 'standings' | 'categories' | 'titles' | 'login' | 'settings';
