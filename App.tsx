@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, Stage, Score, View, Category } from './types';
 import Header from './components/Header';
@@ -12,8 +13,8 @@ const App: React.FC = () => {
     { id: 'c3', name: 'U18' },
   ]);
   const [players, setPlayers] = useState<Player[]>([
-      { id: 'p1', name: 'Magnus Carlsen', categoryId: 'c1', birthDate: '1990-11-30', cbxId: '0123', fideId: '1503014', email: 'magnus.carlsen@example.com' },
-      { id: 'p2', name: 'Hikaru Nakamura', categoryId: 'c1', birthDate: '1987-12-09', cbxId: '0456', fideId: '2016192', email: 'hikaru.nakamura@example.com' },
+      { id: 'p1', name: 'Magnus Carlsen', categoryId: 'c1', birthDate: '1990-11-30', cbxId: '0123', fideId: '1503014', email: 'magnus.carlsen@example.com', title: 'GM' },
+      { id: 'p2', name: 'Hikaru Nakamura', categoryId: 'c1', birthDate: '1987-12-09', cbxId: '0456', fideId: '2016192', email: 'hikaru.nakamura@example.com', title: 'GM' },
   ]);
   const [stages, setStages] = useState<Stage[]>([
       { id: 's1', name: 'Etapa 1 - Rápidas' },
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   const [playerCbxId, setPlayerCbxId] = useState('');
   const [playerFideId, setPlayerFideId] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
+  const [playerTitle, setPlayerTitle] = useState('');
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
   const [stageName, setStageName] = useState('');
@@ -57,6 +59,8 @@ const App: React.FC = () => {
   // State for settings form
   const [settingsName, setSettingsName] = useState(systemName);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState<string | null>(systemLogo);
+
+  const titleOptions = ['GM', 'IM', 'FM', 'NM', 'AFM'];
 
   // Load settings from localStorage on initial render
   useEffect(() => {
@@ -112,6 +116,7 @@ const App: React.FC = () => {
       setPlayerCbxId(editingPlayer.cbxId);
       setPlayerFideId(editingPlayer.fideId);
       setPlayerEmail(editingPlayer.email);
+      setPlayerTitle(editingPlayer.title || '');
     } else {
       setPlayerName('');
       setPlayerCategoryId('');
@@ -119,6 +124,7 @@ const App: React.FC = () => {
       setPlayerCbxId('');
       setPlayerFideId('');
       setPlayerEmail('');
+      setPlayerTitle('');
     }
   }, [editingPlayer]);
 
@@ -217,6 +223,7 @@ const App: React.FC = () => {
         cbxId: playerCbxId,
         fideId: playerFideId,
         email: playerEmail,
+        title: playerTitle || undefined,
       };
       if (editingPlayer) {
         setPlayers(players.map(p => p.id === editingPlayer.id ? { ...p, ...playerData } : p));
@@ -362,10 +369,16 @@ const App: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-4">{editingPlayer ? 'Editar Jogador' : 'Cadastrar Jogador'}</h2>
                 <div className="space-y-4">
                   <input type="text" placeholder="Nome do Jogador" value={playerName} onChange={e => setPlayerName(e.target.value)} className={inputClasses} required />
-                  <select value={playerCategoryId} onChange={e => setPlayerCategoryId(e.target.value)} className={inputClasses} required>
-                    <option value="">Selecione uma Categoria</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <select value={playerCategoryId} onChange={e => setPlayerCategoryId(e.target.value)} className={inputClasses} required>
+                      <option value="">Categoria</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <select value={playerTitle} onChange={e => setPlayerTitle(e.target.value)} className={inputClasses}>
+                      <option value="">Titulação</option>
+                      {titleOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
                   <input type="date" value={playerBirthDate} onChange={e => setPlayerBirthDate(e.target.value)} className={`${inputClasses} text-slate-400`} required />
                   <input type="email" placeholder="Email" value={playerEmail} onChange={e => setPlayerEmail(e.target.value)} className={inputClasses} />
                   <div className="grid grid-cols-2 gap-4">
@@ -389,7 +402,10 @@ const App: React.FC = () => {
                 {players.map(p => (
                   <li key={p.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md">
                     <div>
-                      <p className="font-semibold">{p.name}</p>
+                      <p className="font-semibold">
+                        {p.title && <span className="text-amber-400 font-bold mr-1">{p.title}</span>}
+                        {p.name}
+                      </p>
                       <p className="text-sm text-slate-400">{getCategoryName(p.categoryId)} - Nasc: {new Date(p.birthDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</p>
                       <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-x-4 gap-y-1">
                           {p.email && <span className="flex items-center">📧 <span className="ml-1">{p.email}</span></span>}

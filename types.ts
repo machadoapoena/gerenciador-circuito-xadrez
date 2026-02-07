@@ -1,3 +1,4 @@
+
 export interface Player {
   id: string;
   name: string;
@@ -6,6 +7,7 @@ export interface Player {
   cbxId: string;
   fideId: string;
   email: string;
+  title?: string;
 }
 
 export interface Stage {

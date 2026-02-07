@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Player, Score, Category, Stage } from '../types';
 import { TrophyIcon } from './icons';
@@ -110,7 +111,10 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                       {index + 1}
                     </span>
                   </td>
-                  <td className="p-4 font-medium whitespace-nowrap">{player.name}</td>
+                  <td className="p-4 font-medium whitespace-nowrap">
+                    {player.title && <span className="text-amber-400 font-bold mr-1">{player.title}</span>}
+                    {player.name}
+                  </td>
                   <td className="p-4 text-slate-300">{getCategoryName(player.categoryId)}</td>
                   {stages.map(stage => {
                     const stageScore = scoresByStage.get(stage.id);
