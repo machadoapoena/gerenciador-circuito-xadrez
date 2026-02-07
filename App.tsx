@@ -215,7 +215,7 @@ const App: React.FC = () => {
 
   const handlePlayerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (playerName && playerCategoryId && playerBirthDate) {
+    if (playerName && playerBirthDate) {
       const playerData = { 
         name: playerName, 
         categoryId: playerCategoryId, 
@@ -370,8 +370,8 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <input type="text" placeholder="Nome do Jogador" value={playerName} onChange={e => setPlayerName(e.target.value)} className={inputClasses} required />
                   <div className="grid grid-cols-2 gap-4">
-                    <select value={playerCategoryId} onChange={e => setPlayerCategoryId(e.target.value)} className={inputClasses} required>
-                      <option value="">Categoria</option>
+                    <select value={playerCategoryId} onChange={e => setPlayerCategoryId(e.target.value)} className={inputClasses}>
+                      <option value="">Categoria (Opcional)</option>
                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                     <select value={playerTitle} onChange={e => setPlayerTitle(e.target.value)} className={inputClasses}>
