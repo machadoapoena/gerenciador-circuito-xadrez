@@ -98,7 +98,6 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    // Offset para o tooltip não ficar exatamente sob o cursor
     setTooltipPos({ x: e.clientX + 15, y: e.clientY + 15 });
   };
   
@@ -239,7 +238,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
               let lowestScoreStruck = false;
               const tName = getTitleName(player.titleId);
               const rank = index + 1;
-              const showPhoto = rank <= 10;
+              const showPhoto = rank <= 10 || isCategoryLeader;
               
               return (
                 <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
@@ -256,7 +255,8 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                       onMouseLeave={() => setHoveredPlayerId(null)}
                     >
                       <div className={`w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border transition-all duration-300 ${
-                        rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 'border-slate-500'
+                        rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 
+                        isCategoryLeader ? 'border-amber-400/50' : 'border-slate-500'
                       } group-hover/player:border-white`}>
                         { (showPhoto && player.photoUrl) ? (
                           <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
@@ -316,14 +316,14 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
         </table>
       </div>
       
-      {selectedStageView === 'all' && (
-        <div className="mt-6 p-4 bg-slate-900/40 rounded-lg border border-slate-700/50">
-          <p className="text-xs text-slate-500 italic">
-            * A <strong>Classificação Geral</strong> utiliza a regra de descarte: soma-se os pontos de todas as etapas e subtrai-se o pior resultado individual (para jogadores com 2 ou mais participações). 
-            <br className="hidden md:block"/> Passe o mouse sobre o nome do jogador para ver seu perfil completo.
-          </p>
-        </div>
-      )}
+      <div className="mt-6 p-4 bg-slate-900/40 rounded-lg border border-slate-700/50">
+        <p className="text-xs text-slate-500 italic">
+          {selectedStageView === 'all' && (
+            <>* A <strong>Classificação Geral</strong> utiliza a regra de descarte: soma-se os pontos de todas as etapas e subtrai-se o pior resultado individual (para jogadores com 2 ou mais participações).<br/></>
+          )}
+          As fotos são exibidas para os 10 primeiros colocados e para os líderes de cada categoria. Passe o mouse sobre o nome para ver detalhes.
+        </p>
+      </div>
     </div>
   );
 };
