@@ -49,9 +49,9 @@ const App: React.FC = () => {
   const [settingsLogoPreview, setSettingsLogoPreview] = useState<string | null>(systemLogo);
 
   // --- Helpers ---
-  const getPName = (id: string) => players.find(p => p.id === id)?.name || 'Desconhecido';
-  const getSName = (id: string) => stages.find(s => s.id === id)?.name || 'Desconhecido';
-  const getTitleName = (id?: string) => titles.find(t => t.id === id)?.name || '';
+  const getPName = (id: string) => players.find(p => String(p.id) === String(id))?.name || 'Desconhecido';
+  const getSName = (id: string) => stages.find(s => String(s.id) === String(id))?.name || 'Desconhecido';
+  const getTitleName = (id?: string) => titles.find(t => String(t.id) === String(id))?.name || '';
 
   // --- Hooks at Top Level ---
   const filteredScoresForView = useMemo(() => {
@@ -155,7 +155,7 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!playerName) return;
 
-    const playerData = { 
+    const playerData: any = { 
       name: playerName, 
       categoryId: playerCategoryId || null, 
       birthDate: playerBirthDate || null, 
@@ -174,6 +174,8 @@ const App: React.FC = () => {
         setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...playerData } as Player : p));
         setEditingPlayer(null);
       } else {
+        // Adicionando ID manualmente para evitar erro de NOT NULL no banco
+        playerData.id = crypto.randomUUID();
         const { data, error } = await supabase.from('players').insert(playerData).select().single();
         if (error) throw error;
         if (data) setPlayers(prev => [...prev, data as Player]);
@@ -199,13 +201,14 @@ const App: React.FC = () => {
     if (!stageName) return;
     setIsLoading(true);
     try {
-      const stageData = { name: stageName, url: stageUrl || null };
+      const stageData: any = { name: stageName, url: stageUrl || null };
       if (editingStage) {
         const { error } = await supabase.from('stages').update(stageData).eq('id', editingStage.id);
         if (error) throw error;
         setStages(prev => prev.map(s => s.id === editingStage.id ? { ...s, ...stageData } : s));
         setEditingStage(null);
       } else {
+        stageData.id = crypto.randomUUID();
         const { data, error } = await supabase.from('stages').insert(stageData).select().single();
         if (error) throw error;
         if (data) setStages(prev => [...prev, data as Stage]);
@@ -224,7 +227,7 @@ const App: React.FC = () => {
     if (!categoryName) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('categories').insert({ name: categoryName }).select().single();
+      const { data, error } = await supabase.from('categories').insert({ id: crypto.randomUUID(), name: categoryName }).select().single();
       if (error) throw error;
       if (data) setCategories(prev => [...prev, data]);
       setCategoryName('');
@@ -240,7 +243,7 @@ const App: React.FC = () => {
     if (!titleName) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('titles').insert({ name: titleName }).select().single();
+      const { data, error } = await supabase.from('titles').insert({ id: crypto.randomUUID(), name: titleName }).select().single();
       if (error) throw error;
       if (data) setTitles(prev => [...prev, data]);
       setTitleName('');
@@ -255,9 +258,11 @@ const App: React.FC = () => {
     if (!scoreId) return false;
     setIsLoading(true);
     try {
+      // Exclusão no Supabase comparando explicitamente o ID
       const { error } = await supabase.from('scores').delete().eq('id', scoreId);
       if (error) throw error;
       
+      // Atualização do estado local usando comparação robusta de strings
       setScores(prev => prev.filter(s => String(s.id) !== String(scoreId)));
       return true;
     } catch (err: any) {
@@ -290,7 +295,12 @@ const App: React.FC = () => {
           if (error) throw error;
           setScores(prev => prev.map(s => String(s.id) === String(existing.id) ? { ...s, points } : s));
         } else {
-          const scoreData = { playerId: selectedPlayerIdForScoring, stageId: selectedStageIdForScoring, points };
+          const scoreData = { 
+            id: crypto.randomUUID(), 
+            playerId: selectedPlayerIdForScoring, 
+            stageId: selectedStageIdForScoring, 
+            points 
+          };
           const { data, error } = await supabase.from('scores').insert(scoreData).select().single();
           if (error) throw error;
           if (data) setScores(prev => [...prev, data]);
@@ -443,7 +453,7 @@ const App: React.FC = () => {
                               if (error) {
                                 alert('Erro ao excluir jogador: ' + error.message);
                               } else {
-                                setPlayers(prev => prev.filter(x => x.id !== p.id));
+                                setPlayers(prev => prev.filter(x => String(x.id) !== String(p.id)));
                                 setScores(prev => prev.filter(s => String(s.playerId) !== String(p.id)));
                               }
                             } catch (err: any) {
@@ -480,8 +490,8 @@ const App: React.FC = () => {
                         if (error) {
                           alert('Erro ao excluir categoria: ' + error.message);
                         } else {
-                          setCategories(prev => prev.filter(x => x.id !== c.id));
-                          setPlayers(prev => prev.map(p => p.categoryId === c.id ? { ...p, categoryId: '' } : p));
+                          setCategories(prev => prev.filter(x => String(x.id) !== String(c.id)));
+                          setPlayers(prev => prev.map(p => String(p.categoryId) === String(c.id) ? { ...p, categoryId: '' } : p));
                         }
                         setIsLoading(false);
                       }
@@ -512,8 +522,8 @@ const App: React.FC = () => {
                         if (error) {
                           alert('Erro ao excluir titulação: ' + error.message);
                         } else {
-                          setTitles(prev => prev.filter(x => x.id !== t.id));
-                          setPlayers(prev => prev.map(p => p.titleId === t.id ? { ...p, titleId: '' } : p));
+                          setTitles(prev => prev.filter(x => String(x.id) !== String(t.id)));
+                          setPlayers(prev => prev.map(p => String(p.titleId) === String(t.id) ? { ...p, titleId: '' } : p));
                         }
                         setIsLoading(false);
                       }
@@ -567,7 +577,7 @@ const App: React.FC = () => {
                           if (error) {
                             alert('Erro ao excluir etapa: ' + error.message);
                           } else {
-                            setStages(prev => prev.filter(x => x.id !== s.id));
+                            setStages(prev => prev.filter(x => String(x.id) !== String(s.id)));
                             setScores(prev => prev.filter(sc => String(sc.stageId) !== String(s.id)));
                           }
                           setIsLoading(false);
