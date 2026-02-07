@@ -60,7 +60,7 @@ const App: React.FC = () => {
   const [settingsName, setSettingsName] = useState(systemName);
   const [settingsLogoPreview, setSettingsLogoPreview] = useState<string | null>(systemLogo);
 
-  const titleOptions = ['GM', 'IM', 'FM', 'NM', 'AFM'];
+  const titleOptions = ['GM', 'IM', 'FM', 'NM', 'AFM', 'ACM', 'CMN', 'CM'];
 
   // Load settings from localStorage on initial render
   useEffect(() => {
