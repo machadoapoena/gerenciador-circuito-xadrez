@@ -5,7 +5,7 @@ import Header from './components/Header';
 import Standings from './components/Standings';
 import Login from './components/Login';
 import { supabase } from './supabase';
-import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon } from './components/icons';
+import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon, UsersIcon } from './components/icons';
 
 const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const playerPhotoInputRef = useRef<HTMLInputElement>(null);
 
   // System settings
   const [systemName, setSystemName] = useState('Torneio de Xadrez');
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [playerRating, setPlayerRating] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
   const [playerTitleId, setPlayerTitleId] = useState('');
+  const [playerPhoto, setPlayerPhoto] = useState<string | null>(null);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
   const [stageName, setStageName] = useState('');
@@ -151,6 +153,30 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePlayerPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPlayerPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const resetPlayerForm = () => {
+    setPlayerName('');
+    setPlayerCategoryId('');
+    setPlayerBirthDate('');
+    setPlayerCbxId('');
+    setPlayerFideId('');
+    setPlayerRating('');
+    setPlayerEmail('');
+    setPlayerTitleId('');
+    setPlayerPhoto(null);
+    setEditingPlayer(null);
+  };
+
   const handlePlayerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playerName) return;
@@ -163,7 +189,8 @@ const App: React.FC = () => {
       fideId: playerFideId || null, 
       rating: playerRating || null,
       email: playerEmail || null, 
-      titleId: playerTitleId || null 
+      titleId: playerTitleId || null,
+      photoUrl: playerPhoto || null
     };
 
     setIsLoading(true);
@@ -174,21 +201,12 @@ const App: React.FC = () => {
         setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...playerData } as Player : p));
         setEditingPlayer(null);
       } else {
-        // Adicionando ID manualmente para evitar erro de NOT NULL no banco
         playerData.id = crypto.randomUUID();
         const { data, error } = await supabase.from('players').insert(playerData).select().single();
         if (error) throw error;
         if (data) setPlayers(prev => [...prev, data as Player]);
       }
-      
-      setPlayerName('');
-      setPlayerCategoryId('');
-      setPlayerBirthDate('');
-      setPlayerCbxId('');
-      setPlayerFideId('');
-      setPlayerRating('');
-      setPlayerEmail('');
-      setPlayerTitleId('');
+      resetPlayerForm();
     } catch (err: any) {
       alert('Erro ao salvar jogador: ' + err.message);
     } finally {
@@ -258,11 +276,8 @@ const App: React.FC = () => {
     if (!scoreId) return false;
     setIsLoading(true);
     try {
-      // Exclusão no Supabase comparando explicitamente o ID
       const { error } = await supabase.from('scores').delete().eq('id', scoreId);
       if (error) throw error;
-      
-      // Atualização do estado local usando comparação robusta de strings
       setScores(prev => prev.filter(s => String(s.id) !== String(scoreId)));
       return true;
     } catch (err: any) {
@@ -358,6 +373,35 @@ const App: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-8">
             <form onSubmit={handlePlayerSubmit} className={cardClasses}>
               <h2 className="text-2xl font-bold mb-4">{editingPlayer ? 'Editar Jogador' : 'Cadastrar Jogador'}</h2>
+              
+              {/* Photo Upload Section */}
+              <div className="mb-6 flex flex-col items-center">
+                <div 
+                  className="w-32 h-32 rounded-full bg-slate-700 border-2 border-dashed border-slate-500 flex items-center justify-center overflow-hidden cursor-pointer hover:border-indigo-400 transition-colors"
+                  onClick={() => playerPhotoInputRef.current?.click()}
+                >
+                  {playerPhoto ? (
+                    <img src={playerPhoto} alt="Foto do jogador" className="w-full h-full object-cover" />
+                  ) : (
+                    <UsersIcon />
+                  )}
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => playerPhotoInputRef.current?.click()}
+                  className="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                >
+                  {playerPhoto ? 'Alterar Foto' : 'Adicionar Foto'}
+                </button>
+                <input 
+                  type="file" 
+                  ref={playerPhotoInputRef} 
+                  onChange={handlePlayerPhotoChange} 
+                  className="hidden" 
+                  accept="image/*" 
+                />
+              </div>
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">Nome Completo *</label>
@@ -411,26 +455,36 @@ const App: React.FC = () => {
                 <div className="flex gap-2 pt-2">
                   <button type="submit" disabled={isLoading} className={`${buttonClasses} flex-1`}>{editingPlayer ? 'Salvar Alterações' : 'Cadastrar Jogador'}</button>
                   {editingPlayer && (
-                    <button type="button" onClick={() => { setEditingPlayer(null); setPlayerName(''); setPlayerCategoryId(''); setPlayerBirthDate(''); setPlayerCbxId(''); setPlayerFideId(''); setPlayerRating(''); setPlayerEmail(''); setPlayerTitleId(''); }} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
+                    <button type="button" onClick={resetPlayerForm} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
                   )}
                 </div>
               </div>
             </form>
             <div className={cardClasses}>
               <h2 className="text-2xl font-bold mb-4">Jogadores Cadastrados ({players.length})</h2>
-              <div className="overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+              <div className="overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
                 <ul className="space-y-2">
                   {players.map(p => (
                     <li key={p.id} className="flex justify-between items-center bg-slate-700 p-3 rounded-md border-l-4 border-slate-500 hover:border-indigo-500 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="font-semibold">
-                          {getTitleName(p.titleId) && <b className="text-amber-400 mr-1">{getTitleName(p.titleId)}</b>}
-                          {p.name}
-                        </span>
-                        <div className="flex gap-3 text-xs text-slate-400 mt-1">
-                          {p.rating && <span>Rating: {p.rating}</span>}
-                          {p.cbxId && <span>CBX: {p.cbxId}</span>}
-                          {p.fideId && <span>FIDE: {p.fideId}</span>}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border border-slate-500">
+                          {p.photoUrl ? (
+                            <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                <UsersIcon />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">
+                            {getTitleName(p.titleId) && <b className="text-amber-400 mr-1">{getTitleName(p.titleId)}</b>}
+                            {p.name}
+                          </span>
+                          <div className="flex gap-3 text-[10px] text-slate-400 mt-0.5">
+                            {p.rating && <span>Rating: {p.rating}</span>}
+                            {p.cbxId && <span>CBX: {p.cbxId}</span>}
+                          </div>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -444,6 +498,7 @@ const App: React.FC = () => {
                           setPlayerRating(p.rating || '');
                           setPlayerEmail(p.email || '');
                           setPlayerTitleId(p.titleId || ''); 
+                          setPlayerPhoto(p.photoUrl || null);
                         }} className="text-sky-400 hover:text-sky-300 p-1"><PencilIcon/></button>
                         <button onClick={async () => { 
                           if(confirm('Tem certeza que deseja excluir este jogador? Todas as pontuações dele serão removidas.')) {

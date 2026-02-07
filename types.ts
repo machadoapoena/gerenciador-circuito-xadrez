@@ -9,6 +9,7 @@ export interface Player {
   email: string;
   rating?: string;
   titleId?: string;
+  photoUrl?: string;
 }
 
 export interface Stage {
