@@ -55,7 +55,22 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
       };
     });
 
-    return processedPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
+    // Sort by total points descending
+    const sorted = processedPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    // Determine category leaders (first appearance in sorted list)
+    const categoryLeaders = new Set<string>();
+    const playersWithLeaderFlag = sorted.map(item => {
+      let isCategoryLeader = false;
+      const catId = item.player.categoryId;
+      if (catId && !categoryLeaders.has(catId)) {
+        categoryLeaders.add(catId);
+        isCategoryLeader = true;
+      }
+      return { ...item, isCategoryLeader };
+    });
+
+    return playersWithLeaderFlag;
   }, [players, scores, stages]);
 
   const getRankColor = (rank: number) => {
@@ -102,7 +117,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
             </tr>
           </thead>
           <tbody>
-            {rankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore }, index) => {
+            {rankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader }, index) => {
               let lowestScoreStruck = false;
               return (
                 <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
@@ -115,7 +130,16 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
                     {player.title && <span className="text-amber-400 font-bold mr-1">{player.title}</span>}
                     {player.name}
                   </td>
-                  <td className="p-4 text-slate-300">{getCategoryName(player.categoryId)}</td>
+                  <td className="p-4">
+                    <div className="flex flex-col">
+                      <span className="text-slate-300">{getCategoryName(player.categoryId)}</span>
+                      {isCategoryLeader && player.categoryId && (
+                        <span className="text-[10px] uppercase tracking-tighter font-bold text-amber-400 mt-0.5 flex items-center">
+                          <span className="mr-1">🏆</span> Melhor da Categoria
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   {stages.map(stage => {
                     const stageScore = scoresByStage.get(stage.id);
                     const isLowestAndNotStruck = lowestScore !== null && stageScore === lowestScore && !lowestScoreStruck;
