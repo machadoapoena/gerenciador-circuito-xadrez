@@ -7,7 +7,8 @@ export interface Player {
   cbxId: string;
   fideId: string;
   email: string;
-  titleId?: string; // Changed from title string to titleId
+  rating?: string;
+  titleId?: string;
 }
 
 export interface Stage {
