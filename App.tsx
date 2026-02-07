@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
 
   const [stageName, setStageName] = useState('');
+  const [stageUrl, setStageUrl] = useState('');
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
+
   const [categoryName, setCategoryName] = useState('');
   const [titleName, setTitleName] = useState('');
 
@@ -182,13 +185,22 @@ const App: React.FC = () => {
     if (!stageName) return;
     setIsLoading(true);
     try {
-      const newStage = { id: crypto.randomUUID(), name: stageName };
-      const { error } = await supabase.from('stages').insert(newStage);
-      if (error) throw error;
-      setStages([...stages, newStage]);
+      const data = { name: stageName, url: stageUrl || null };
+      if (editingStage) {
+        const { error } = await supabase.from('stages').update(data).eq('id', editingStage.id);
+        if (error) throw error;
+        setStages(stages.map(s => s.id === editingStage.id ? { ...s, ...data } : s));
+        setEditingStage(null);
+      } else {
+        const newStage = { id: crypto.randomUUID(), ...data };
+        const { error } = await supabase.from('stages').insert(newStage);
+        if (error) throw error;
+        setStages([...stages, newStage as Stage]);
+      }
       setStageName('');
+      setStageUrl('');
     } catch (err: any) {
-      alert('Erro ao criar etapa: ' + err.message);
+      alert('Erro ao salvar etapa: ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -359,7 +371,7 @@ const App: React.FC = () => {
                 <div className="flex gap-2 pt-2">
                   <button type="submit" disabled={isLoading} className={`${buttonClasses} flex-1`}>{editingPlayer ? 'Salvar Alterações' : 'Cadastrar Jogador'}</button>
                   {editingPlayer && (
-                    <button type="button" onClick={() => { setEditingPlayer(null); setPlayerName(''); }} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
+                    <button type="button" onClick={() => { setEditingPlayer(null); setPlayerName(''); setPlayerCategoryId(''); setPlayerBirthDate(''); setPlayerCbxId(''); setPlayerFideId(''); setPlayerRating(''); setPlayerEmail(''); setPlayerTitleId(''); }} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
                   )}
                 </div>
               </div>
@@ -463,21 +475,47 @@ const App: React.FC = () => {
         return (
           <div className="grid md:grid-cols-2 gap-8">
             <form onSubmit={handleStageSubmit} className={cardClasses}>
-              <h2 className="text-2xl font-bold mb-4">Gerenciar Etapas</h2>
-              <input type="text" placeholder="Nome da Etapa (ex: 1ª Rodada)" value={stageName} onChange={e => setStageName(e.target.value)} className={inputClasses} />
-              <button type="submit" disabled={isLoading} className={`${buttonClasses} mt-4 w-full`}>Adicionar</button>
+              <h2 className="text-2xl font-bold mb-4">{editingStage ? 'Editar Etapa' : 'Gerenciar Etapas'}</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Nome da Etapa *</label>
+                  <input type="text" placeholder="Nome da Etapa (ex: 1ª Rodada)" value={stageName} onChange={e => setStageName(e.target.value)} className={inputClasses} required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Link da Etapa (URL)</label>
+                  <input type="url" placeholder="https://chess-results.com/..." value={stageUrl} onChange={e => setStageUrl(e.target.value)} className={inputClasses} />
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={isLoading} className={`${buttonClasses} flex-1`}>{editingStage ? 'Salvar Alterações' : 'Adicionar'}</button>
+                  {editingStage && (
+                    <button type="button" onClick={() => { setEditingStage(null); setStageName(''); setStageUrl(''); }} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-md transition">Cancelar</button>
+                  )}
+                </div>
+              </div>
             </form>
             <div className={cardClasses}>
               <ul className="space-y-2">
                 {stages.map(s => (
-                  <li key={s.id} className="flex justify-between p-3 bg-slate-700 rounded-md">
-                    {s.name}
-                    <button onClick={async () => {
-                      setIsLoading(true);
-                      await supabase.from('stages').delete().eq('id', s.id);
-                      setStages(stages.filter(x => x.id !== s.id));
-                      setIsLoading(false);
-                    }} className="text-red-400"><TrashIcon/></button>
+                  <li key={s.id} className="flex justify-between p-3 bg-slate-700 rounded-md border-l-4 border-slate-500 hover:border-indigo-500 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{s.name}</span>
+                      {s.url && <span className="text-xs text-indigo-400 truncate max-w-[200px]">{s.url}</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { 
+                          setEditingStage(s); 
+                          setStageName(s.name); 
+                          setStageUrl(s.url || ''); 
+                        }} className="text-sky-400 hover:text-sky-300 p-1"><PencilIcon/></button>
+                      <button onClick={async () => {
+                        if (confirm('Deseja excluir esta etapa?')) {
+                          setIsLoading(true);
+                          await supabase.from('stages').delete().eq('id', s.id);
+                          setStages(stages.filter(x => x.id !== s.id));
+                          setIsLoading(false);
+                        }
+                      }} className="text-red-400 hover:text-red-300 p-1"><TrashIcon/></button>
+                    </div>
                   </li>
                 ))}
               </ul>

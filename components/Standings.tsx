@@ -116,7 +116,21 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
               <th className="p-4 text-sm font-semibold tracking-wider text-slate-400">Jogador</th>
               <th className="p-4 text-sm font-semibold tracking-wider text-slate-400">Categoria</th>
               {stages.map(stage => (
-                <th key={stage.id} className="p-4 text-sm font-semibold tracking-wider text-slate-400 text-center whitespace-nowrap">{stage.name}</th>
+                <th key={stage.id} className="p-4 text-sm font-semibold tracking-wider text-slate-400 text-center whitespace-nowrap">
+                  {stage.url ? (
+                    <a 
+                      href={stage.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 decoration-indigo-500/30 hover:decoration-indigo-400 transition-all"
+                      title="Ver resultados desta etapa"
+                    >
+                      {stage.name}
+                    </a>
+                  ) : (
+                    stage.name
+                  )}
+                </th>
               ))}
               <th className="p-4 text-sm font-semibold tracking-wider text-slate-400 text-right whitespace-nowrap">Total (c/ Descarte)</th>
             </tr>

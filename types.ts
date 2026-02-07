@@ -14,6 +14,7 @@ export interface Player {
 export interface Stage {
   id: string;
   name: string;
+  url?: string;
 }
 
 export interface Score {
