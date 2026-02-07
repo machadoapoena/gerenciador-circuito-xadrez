@@ -13,6 +13,7 @@ interface StandingsProps {
 
 const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stages, titles }) => {
   const [selectedStageView, setSelectedStageView] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
@@ -24,7 +25,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
     return titles.find(t => String(t.id) === String(titleId))?.name || '';
   }
 
-  const rankedPlayers = useMemo(() => {
+  const allRankedPlayers = useMemo(() => {
     if (players.length === 0) return [];
 
     const scoresByPlayer = new Map<string, Score[]>();
@@ -68,21 +69,31 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
       };
     });
 
+    // Ordenação principal
     const sorted = processedPlayers.sort((a, b) => b.totalPoints - a.totalPoints);
 
     const categoryLeaders = new Set<string>();
-    const playersWithLeaderFlag = sorted.map(item => {
+    
+    // Adiciona Rank e flag de líder de categoria
+    return sorted.map((item, index) => {
       let isCategoryLeader = false;
       const catId = item.player.categoryId;
       if (catId && !categoryLeaders.has(catId)) {
         categoryLeaders.add(catId);
         isCategoryLeader = true;
       }
-      return { ...item, isCategoryLeader };
+      return { ...item, isCategoryLeader, rank: index + 1 };
     });
-
-    return playersWithLeaderFlag;
   }, [players, scores, stages, selectedStageView]);
+
+  // Filtro de busca aplicado sobre a classificação já rankeada
+  const filteredRankedPlayers = useMemo(() => {
+    if (!searchQuery.trim()) return allRankedPlayers;
+    const query = searchQuery.toLowerCase();
+    return allRankedPlayers.filter(item => 
+      item.player.name.toLowerCase().includes(query)
+    );
+  }, [allRankedPlayers, searchQuery]);
 
   const getRankColor = (rank: number) => {
     switch (rank) {
@@ -101,7 +112,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
     setTooltipPos({ x: e.clientX + 15, y: e.clientY + 15 });
   };
   
-  if (rankedPlayers.length === 0) {
+  if (allRankedPlayers.length === 0) {
     return (
       <div className="bg-slate-800 p-8 rounded-lg shadow-xl text-center">
         <TrophyIcon className="mx-auto h-16 w-16 text-indigo-400 mb-4" />
@@ -182,7 +193,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between mb-8 gap-4">
         <div className="flex items-center">
           <TrophyIcon className="h-8 w-8 text-indigo-400" />
           <h2 className="text-2xl md:text-3xl font-bold ml-3">
@@ -190,21 +201,39 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           </h2>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <label className="text-sm font-medium text-slate-400 whitespace-nowrap">Filtrar Visão:</label>
-          <select 
-            value={selectedStageView} 
-            onChange={(e) => setSelectedStageView(e.target.value)}
-            className={inputClasses}
-          >
-            <option value="all">🏆 Classificação Geral (com descarte)</option>
-            <hr className="my-1 border-slate-600" />
-            <optgroup label="Etapas Individuais">
-              {stages.map(s => (
-                <option key={s.id} value={s.id}>📍 {s.name}</option>
-              ))}
-            </optgroup>
-          </select>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-64">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Buscar Jogador:</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="Nome do atleta..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`${inputClasses} pl-10`}
+              />
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <UsersIcon />
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-64">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Filtrar Visão:</label>
+            <select 
+              value={selectedStageView} 
+              onChange={(e) => setSelectedStageView(e.target.value)}
+              className={inputClasses}
+            >
+              <option value="all">🏆 Classificação Geral (com descarte)</option>
+              <hr className="my-1 border-slate-600" />
+              <optgroup label="Etapas Individuais">
+                {stages.map(s => (
+                  <option key={s.id} value={s.id}>📍 {s.name}</option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -234,89 +263,95 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
             </tr>
           </thead>
           <tbody>
-            {rankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader }, index) => {
-              let lowestScoreStruck = false;
-              const tName = getTitleName(player.titleId);
-              const rank = index + 1;
-              const showAvatar = rank <= 10 || isCategoryLeader;
-              
-              return (
-                <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
-                  <td className="p-4">
-                    <span className={`w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-xs md:text-sm font-bold rounded-full shadow-inner ${getRankColor(rank)}`}>
-                      {rank}
-                    </span>
-                  </td>
-                  <td className="p-4 font-medium whitespace-nowrap">
-                    <div 
-                      className="flex items-center gap-3 cursor-help group/player"
-                      onMouseEnter={(e) => { setHoveredPlayerId(player.id); handleMouseMove(e); }}
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={() => setHoveredPlayerId(null)}
-                    >
-                      {showAvatar ? (
-                        <div className={`w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border transition-all duration-300 ${
-                          rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 
-                          isCategoryLeader ? 'border-amber-400/50' : 'border-slate-500'
-                        } group-hover/player:border-white`}>
-                          { player.photoUrl ? (
-                            <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
-                                <UsersIcon />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        // Espaçador para manter o alinhamento dos nomes quando o avatar não é mostrado
-                        <div className="w-8 flex-shrink-0" />
-                      )}
-                      <div className="flex flex-col">
-                        <span className={`text-sm md:text-base transition-colors ${rank <= 3 ? 'font-bold' : ''} group-hover/player:text-indigo-300`}>
-                          {tName && <span className="text-amber-400 font-bold mr-1">{tName}</span>}
-                          {player.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 sm:hidden">{getCategoryName(player.categoryId)}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 hidden sm:table-cell">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-300 text-sm">{getCategoryName(player.categoryId)}</span>
-                      {isCategoryLeader && player.categoryId && (
-                        <span title="Melhor da Categoria" className="text-amber-400 drop-shadow-sm filter brightness-110">
-                          🏆
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  {stages.map(stage => {
-                    const stageScore = scoresByStage.get(String(stage.id));
-                    const isSelected = selectedStageView === stage.id;
-                    const isLowestAndNotStruck = selectedStageView === 'all' && lowestScore !== null && stageScore === lowestScore && !lowestScoreStruck;
-                    if (isLowestAndNotStruck) {
-                        lowestScoreStruck = true;
-                    }
-                    
-                    return (
-                      <td 
-                        key={stage.id} 
-                        className={`p-4 text-center font-mono text-xs md:text-sm transition-colors duration-300 ${
-                          isSelected ? 'bg-indigo-500/5 font-bold text-indigo-300' : ''
-                        } ${isLowestAndNotStruck ? 'text-slate-500 line-through opacity-50' : ''}`}
+            {filteredRankedPlayers.length === 0 ? (
+              <tr>
+                <td colSpan={stages.length + 4} className="p-12 text-center text-slate-500 italic">
+                  Nenhum jogador encontrado com o nome "{searchQuery}".
+                </td>
+              </tr>
+            ) : (
+              filteredRankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader, rank }) => {
+                let lowestScoreStruck = false;
+                const tName = getTitleName(player.titleId);
+                const showAvatar = rank <= 10 || isCategoryLeader;
+                
+                return (
+                  <tr key={player.id} className="border-b border-slate-700 last:border-b-0 hover:bg-slate-700/50 transition-colors">
+                    <td className="p-4">
+                      <span className={`w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-xs md:text-sm font-bold rounded-full shadow-inner ${getRankColor(rank)}`}>
+                        {rank}
+                      </span>
+                    </td>
+                    <td className="p-4 font-medium whitespace-nowrap">
+                      <div 
+                        className="flex items-center gap-3 cursor-help group/player"
+                        onMouseEnter={(e) => { setHoveredPlayerId(player.id); handleMouseMove(e); }}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={() => setHoveredPlayerId(null)}
                       >
-                        {stageScore ?? '—'}
-                      </td>
-                    )
-                  })}
-                  <td className={`p-4 text-lg md:text-xl font-bold text-right transition-colors duration-300 ${
-                    selectedStageView === 'all' ? 'text-indigo-400' : 'text-indigo-300'
-                  }`}>
-                    {totalPoints}
-                  </td>
-                </tr>
-              )
-            })}
+                        {showAvatar ? (
+                          <div className={`w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border transition-all duration-300 ${
+                            rank <= 3 ? 'border-indigo-400 scale-110 shadow-lg shadow-indigo-500/10' : 
+                            isCategoryLeader ? 'border-amber-400/50' : 'border-slate-500'
+                          } group-hover/player:border-white`}>
+                            { player.photoUrl ? (
+                              <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">
+                                  <UsersIcon />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-8 flex-shrink-0" />
+                        )}
+                        <div className="flex flex-col">
+                          <span className={`text-sm md:text-base transition-colors ${rank <= 3 ? 'font-bold' : ''} group-hover/player:text-indigo-300`}>
+                            {tName && <span className="text-amber-400 font-bold mr-1">{tName}</span>}
+                            {player.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 sm:hidden">{getCategoryName(player.categoryId)}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 hidden sm:table-cell">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-300 text-sm">{getCategoryName(player.categoryId)}</span>
+                        {isCategoryLeader && player.categoryId && (
+                          <span title="Melhor da Categoria" className="text-amber-400 drop-shadow-sm filter brightness-110">
+                            🏆
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    {stages.map(stage => {
+                      const stageScore = scoresByStage.get(String(stage.id));
+                      const isSelected = selectedStageView === stage.id;
+                      const isLowestAndNotStruck = selectedStageView === 'all' && lowestScore !== null && stageScore === lowestScore && !lowestScoreStruck;
+                      if (isLowestAndNotStruck) {
+                          lowestScoreStruck = true;
+                      }
+                      
+                      return (
+                        <td 
+                          key={stage.id} 
+                          className={`p-4 text-center font-mono text-xs md:text-sm transition-colors duration-300 ${
+                            isSelected ? 'bg-indigo-500/5 font-bold text-indigo-300' : ''
+                          } ${isLowestAndNotStruck ? 'text-slate-500 line-through opacity-50' : ''}`}
+                        >
+                          {stageScore ?? '—'}
+                        </td>
+                      )
+                    })}
+                    <td className={`p-4 text-lg md:text-xl font-bold text-right transition-colors duration-300 ${
+                      selectedStageView === 'all' ? 'text-indigo-400' : 'text-indigo-300'
+                    }`}>
+                      {totalPoints}
+                    </td>
+                  </tr>
+                )
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -326,7 +361,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           {selectedStageView === 'all' && (
             <>* A <strong>Classificação Geral</strong> utiliza a regra de descarte: soma-se os pontos de todas as etapas e subtrai-se o pior resultado individual (para jogadores com 2 ou mais participações).<br/></>
           )}
-          As fotos e ícones de destaque são exibidos apenas para os 10 primeiros colocados e líderes de categoria. Passe o mouse sobre o nome para ver detalhes.
+          Utilize o campo de busca para encontrar atletas pelo nome. Fotos são exibidas para o Top 10 e líderes de categoria.
         </p>
       </div>
     </div>
