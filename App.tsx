@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const [playerEmail, setPlayerEmail] = useState('');
   const [playerTitleId, setPlayerTitleId] = useState('');
   const [playerPhoto, setPlayerPhoto] = useState<string | null>(null);
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   
   const [stageName, setStageName] = useState('');
@@ -106,7 +107,7 @@ const App: React.FC = () => {
       const newLoaded = new Set(loadedModules);
       for (const table of toLoad) {
         let query = supabase.from(table).select('*');
-        if (table === 'players') query = supabase.from('players').select('id, name, categoryId, birthDate, cbxId, fideId, email, rating, titleId').order('name');
+        if (table === 'players') query = supabase.from('players').select('id, name, categoryId, birthDate, cbxId, fideId, email, rating, titleId, photoUrl').order('name');
         else if (table === 'scores') query = supabase.from('scores').select('*');
         else query = supabase.from(table).select('*').order('name');
         const { data, error } = await query;
@@ -320,16 +321,14 @@ const App: React.FC = () => {
     setPlayerEmail('');
     setPlayerTitleId('');
     setPlayerPhoto(null);
+    setSelectedPhotoFile(null);
   };
 
   const handlePlayerPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPlayerPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setSelectedPhotoFile(file);
+      setPlayerPhoto(URL.createObjectURL(file));
     }
   };
 
@@ -348,7 +347,37 @@ const App: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
+      const playerToSaveId = editingPlayer?.id || crypto.randomUUID();
+      let photoUrlToSave = editingPlayer?.photoUrl || null;
+
+      // Se houver um novo arquivo selecionado, faz o upload para o Storage
+      if (selectedPhotoFile) {
+        const fileExt = selectedPhotoFile.name.split('.').pop() || 'jpg';
+        const fileName = `${playerToSaveId}_${Date.now()}.${fileExt}`;
+        const filePath = `jogadores/${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('gerenciador_torneio_xadrez')
+          .upload(filePath, selectedPhotoFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Pega a URL pública
+        const { data: publicUrlData } = supabase.storage
+          .from('gerenciador_torneio_xadrez')
+          .getPublicUrl(filePath);
+        
+        photoUrlToSave = publicUrlData.publicUrl;
+      } else if (playerPhoto === null) {
+        // Se o usuário limpou a foto
+        photoUrlToSave = null;
+      }
+
       const playerData = {
+        id: playerToSaveId,
         name: playerName,
         categoryId: playerCategoryId || null,
         birthDate: playerBirthDate || null,
@@ -357,7 +386,7 @@ const App: React.FC = () => {
         email: playerEmail || null,
         rating: playerRating || null,
         titleId: playerTitleId || null,
-        photoUrl: playerPhoto || null,
+        photoUrl: photoUrlToSave,
       };
 
       if (editingPlayer) {
@@ -365,12 +394,12 @@ const App: React.FC = () => {
         if (error) throw error;
         setPlayers(prev => prev.map(p => p.id === editingPlayer.id ? { ...p, ...playerData } : p));
       } else {
-        const newId = crypto.randomUUID();
-        const { error } = await supabase.from('players').insert({ ...playerData, id: newId });
+        const { error } = await supabase.from('players').insert(playerData);
         if (error) throw error;
-        setPlayers(prev => [...prev, { ...playerData, id: newId } as Player]);
+        setPlayers(prev => [...prev, playerData as Player]);
       }
       resetPlayerForm();
+      alert("Jogador salvo com sucesso!");
     } catch (err: any) {
       alert("Erro ao salvar jogador: " + err.message);
     } finally {
@@ -502,7 +531,7 @@ const App: React.FC = () => {
             ) : (
               rows.map((item, idx) => (
                 <tr key={item.id} className="hover:bg-slate-700/30 transition-colors">
-                  {Object.keys(item).filter(k => k !== 'id' && k !== 'url').map(key => (
+                  {Object.keys(item).filter(k => k !== 'id' && k !== 'url' && k !== 'photoUrl').map(key => (
                     <td key={key} className="p-4 text-slate-300 font-medium">
                       {key === 'name' && item.url ? (
                         <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{item[key]}</a>
@@ -790,7 +819,22 @@ const App: React.FC = () => {
                       <span className="font-bold text-slate-100">{getTitleName(p.titleId) && <span className="text-amber-400 mr-1">{getTitleName(p.titleId)}</span>}{p.name}</span>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={async () => { setIsLoading(true); const photo = await fetchPlayerPhoto(p.id); setEditingPlayer(p); setPlayerName(p.name); setPlayerCategoryId(p.categoryId || ''); setPlayerBirthDate(p.birthDate || ''); setPlayerCbxId(p.cbxId || ''); setPlayerFideId(p.fideId || ''); setPlayerRating(p.rating || ''); setPlayerEmail(p.email || ''); setPlayerTitleId(p.titleId || ''); setPlayerPhoto(photo); setIsLoading(false); }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg"><PencilIcon /></button>
+                      <button onClick={async () => { 
+                        setIsLoading(true); 
+                        const photo = await fetchPlayerPhoto(p.id); 
+                        setEditingPlayer(p); 
+                        setPlayerName(p.name); 
+                        setPlayerCategoryId(p.categoryId || ''); 
+                        setPlayerBirthDate(p.birthDate || ''); 
+                        setPlayerCbxId(p.cbxId || ''); 
+                        setPlayerFideId(p.fideId || ''); 
+                        setPlayerRating(p.rating || ''); 
+                        setPlayerEmail(p.email || ''); 
+                        setPlayerTitleId(p.titleId || ''); 
+                        setPlayerPhoto(photo); 
+                        setSelectedPhotoFile(null);
+                        setIsLoading(false); 
+                      }} className="p-2 text-sky-400 hover:bg-sky-400/10 rounded-lg"><PencilIcon /></button>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: p.id, name: p.name, type: 'player' })} className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg"><TrashIcon /></button>
                     </div>
                   </div>
