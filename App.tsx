@@ -201,7 +201,7 @@ const App: React.FC = () => {
         return;
     }
 
-    // Calcular Classificação (mesma lógica do Standings.tsx)
+    // Calcular Classificação (exatamente como no Standings.tsx)
     const scoresByPlayer = new Map<string, Score[]>();
     scores.forEach(score => {
       const pid = String(score.playerId);
@@ -211,6 +211,14 @@ const App: React.FC = () => {
 
     const processed = players.map(player => {
       const playerScoresList = scoresByPlayer.get(String(player.id)) || [];
+      const scoresByStage = new Map<string, number>();
+      const ranksByStage = new Map<string, number>();
+
+      playerScoresList.forEach(s => {
+        scoresByStage.set(String(s.stageId), s.points);
+        if (s.rank) ranksByStage.set(String(s.stageId), s.rank);
+      });
+
       const scorePoints = playerScoresList.map(s => s.points);
       const sum = scorePoints.reduce((acc, p) => acc + p, 0);
       let displayTotal = 0;
@@ -218,33 +226,50 @@ const App: React.FC = () => {
         const lowest = Math.min(...scorePoints);
         displayTotal = sum - lowest;
       } else { displayTotal = sum; }
-      return { player, totalPoints: displayTotal };
-    }).sort((a, b) => b.totalPoints - a.totalPoints);
 
-    // Estrutura do documento pdfmake
+      return { player, totalPoints: displayTotal, scoresByStage, ranksByStage };
+    });
+
+    // Lógica de Ordenação idêntica à tela de Classificação
+    const sorted = processed.sort((a, b) => {
+      // Se tiver apenas 1 etapa, usa rank manual
+      if (stages.length === 1) {
+        const stageId = String(stages[0]?.id);
+        const rankA = a.ranksByStage.get(stageId) || 999999;
+        const rankB = b.ranksByStage.get(stageId) || 999999;
+        if (rankA !== rankB) return rankA - rankB;
+        return b.totalPoints - a.totalPoints;
+      }
+      // Múltiplas etapas: Pontos totais desc
+      return b.totalPoints - a.totalPoints;
+    });
+
+    // Construção Dinâmica da Tabela PDF
+    const stageHeaders = stages.map(s => ({ text: s.name, style: 'tableHeader', alignment: 'center' }));
+    const stageWidths = stages.map(() => 40);
+
     const docDefinition = {
+      pageOrientation: 'landscape', // Alterado para landscape 100% como solicitado
       content: [
         { text: systemName, style: 'mainHeader' },
         { text: `Relatório de Classificação Geral - ${new Date().toLocaleDateString()}`, style: 'subHeader' },
         {
           table: {
             headerRows: 1,
-            widths: [40, 'auto', 'auto', 50, 50, 50, 40],
+            widths: [35, 'auto', 'auto', ...stageWidths, 40],
             body: [
               [
                 { text: 'Rank', style: 'tableHeader' },
-                { text: 'Atleta', style: 'tableHeader' },
+                { text: 'Jogador', style: 'tableHeader' },
                 { text: 'Categoria', style: 'tableHeader' },
-                { text: 'Elo', style: 'tableHeader' },
-                { text: 'CBX', style: 'tableHeader' },
-                { text: 'FIDE', style: 'tableHeader' },
-                { text: 'Pts', style: 'tableHeader' },
+                ...stageHeaders,
+                { text: 'Pts', style: 'tableHeader', alignment: 'right' },
               ],
-              ...processed.map((item, index) => {
+              ...sorted.map((item, index) => {
                 const rank = index + 1;
                 let rankText: any = rank;
-                let rankColor = '#f1f5f9'; // slate-100
-                let textColor = '#1e293b'; // slate-800
+                let rankColor = '#f1f5f9';
+                let textColor = '#1e293b';
 
                 if (rank === 1) { rankText = '🏆 1º'; rankColor = '#f59e0b'; textColor = '#ffffff'; }
                 else if (rank === 2) { rankText = '🥈 2º'; rankColor = '#94a3b8'; textColor = '#ffffff'; }
@@ -253,13 +278,16 @@ const App: React.FC = () => {
                 const playerTitle = getTitleName(item.player.titleId);
                 const playerName = playerTitle ? `${playerTitle} ${item.player.name}` : item.player.name;
 
+                const stagePointsCells = stages.map(s => ({
+                  text: item.scoresByStage.get(s.id)?.toString() || '-',
+                  alignment: 'center'
+                }));
+
                 return [
                   { text: rankText, fillColor: rankColor, color: textColor, alignment: 'center', bold: true },
                   { text: playerName, bold: playerTitle !== '' },
                   getCategoryName(item.player.categoryId),
-                  item.player.rating || '—',
-                  item.player.cbxId || '—',
-                  item.player.fideId || '—',
+                  ...stagePointsCells,
                   { text: item.totalPoints.toString(), bold: true, alignment: 'right', color: '#4f46e5' }
                 ];
               })
@@ -267,12 +295,12 @@ const App: React.FC = () => {
           },
           layout: 'lightHorizontalLines'
         },
-        { text: '\n\n* Classificação calculada considerando o descarte da menor pontuação (para atletas com mais de 1 etapa disputada).', style: 'footer' }
+        { text: `\n\n* Classificação gerada em ${new Date().toLocaleString()}. Regra de descarte ativa para mais de 1 etapa.`, style: 'footer' }
       ],
       styles: {
         mainHeader: { fontSize: 22, bold: true, color: '#4f46e5', margin: [0, 0, 0, 5], alignment: 'center' },
         subHeader: { fontSize: 12, italic: true, color: '#64748b', margin: [0, 0, 0, 20], alignment: 'center' },
-        tableHeader: { bold: true, fontSize: 11, color: '#ffffff', fillColor: '#1e293b', margin: [0, 5, 0, 5] },
+        tableHeader: { bold: true, fontSize: 10, color: '#ffffff', fillColor: '#1e293b', margin: [0, 4, 0, 4] },
         footer: { fontSize: 9, italic: true, color: '#94a3b8' }
       },
       defaultStyle: { fontSize: 10 }

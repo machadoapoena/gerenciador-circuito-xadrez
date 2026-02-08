@@ -36,7 +36,13 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
     const processed = players.map(player => {
       const playerScoresList = scoresByPlayer.get(String(player.id)) || [];
       const scoresByStage = new Map<string, number>();
-      playerScoresList.forEach(s => scoresByStage.set(String(s.stageId), s.points));
+      const ranksByStage = new Map<string, number>();
+
+      playerScoresList.forEach(s => {
+        scoresByStage.set(String(s.stageId), s.points);
+        if (s.rank) ranksByStage.set(String(s.stageId), s.rank);
+      });
+
       let displayTotal = 0, lowestScoreValue: number | null = null;
 
       if (selectedStageView === 'all') {
@@ -46,12 +52,32 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           lowestScoreValue = Math.min(...scorePoints);
           displayTotal = sum - lowestScoreValue;
         } else { displayTotal = sum; }
-      } else { displayTotal = scoresByStage.get(selectedStageView) || 0; }
+      } else { 
+        displayTotal = scoresByStage.get(selectedStageView) || 0; 
+      }
 
-      return { player, totalPoints: displayTotal, scoresByStage, lowestScore: lowestScoreValue };
+      return { player, totalPoints: displayTotal, scoresByStage, ranksByStage, lowestScore: lowestScoreValue };
     });
 
-    const sorted = processed.sort((a, b) => b.totalPoints - a.totalPoints);
+    // Lógica de ordenação customizada
+    const sorted = processed.sort((a, b) => {
+      // Regra: Se tiver apenas uma etapa cadastrada OU se uma etapa específica estiver selecionada
+      // Ordena-se pela Colocação (Rank)
+      const useRankSorting = (stages.length === 1) || (selectedStageView !== 'all');
+
+      if (useRankSorting) {
+        const stageId = selectedStageView === 'all' ? String(stages[0]?.id) : selectedStageView;
+        const rankA = a.ranksByStage.get(stageId) || 999999;
+        const rankB = b.ranksByStage.get(stageId) || 999999;
+
+        if (rankA !== rankB) return rankA - rankB; // Crescente (1º, 2º, 3º...)
+        return b.totalPoints - a.totalPoints; // Desempate por pontos
+      }
+
+      // Caso contrário (Múltiplas etapas e Visão Geral): Ordenação padrão por pontos (Geral com descarte)
+      return b.totalPoints - a.totalPoints;
+    });
+
     const categoryLeaders = new Set<string>();
     return sorted.map((item, index) => {
       let isCategoryLeader = false;
@@ -59,7 +85,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
       if (catId && !categoryLeaders.has(catId)) { categoryLeaders.add(catId); isCategoryLeader = true; }
       return { ...item, isCategoryLeader, rank: index + 1 };
     });
-  }, [players, scores, selectedStageView]);
+  }, [players, scores, selectedStageView, stages]);
 
   const filteredRankedPlayers = useMemo(() => {
     if (!searchQuery.trim()) return allRankedPlayers;
