@@ -23,6 +23,7 @@ export interface Score {
   playerId: string;
   stageId: string;
   points: number;
+  rank?: number;
 }
 
 export interface Category {

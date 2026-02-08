@@ -65,6 +65,7 @@ const App: React.FC = () => {
   const [selectedStageIdForScoring, setSelectedStageIdForScoring] = useState<string>('');
   const [selectedPlayerIdForScoring, setSelectedPlayerIdForScoring] = useState<string>('');
   const [singleScoreValue, setSingleScoreValue] = useState<string>('');
+  const [scoreRank, setScoreRank] = useState<string>('');
   const [editingScore, setEditingScore] = useState<Score | null>(null);
 
   // Filtering scores state
@@ -360,7 +361,8 @@ const App: React.FC = () => {
       const scoreData = {
         stageId: selectedStageIdForScoring,
         playerId: selectedPlayerIdForScoring,
-        points: parseFloat(singleScoreValue)
+        points: parseFloat(singleScoreValue),
+        rank: scoreRank ? parseInt(scoreRank) : null
       };
 
       if (editingScore) {
@@ -375,6 +377,7 @@ const App: React.FC = () => {
         setScores(prev => [...prev, { ...scoreData, id: newId } as Score]);
       }
       setSingleScoreValue('');
+      setScoreRank('');
       setSelectedPlayerIdForScoring('');
     } catch (err: any) {
       alert("Erro ao salvar pontuação: " + err.message);
@@ -424,6 +427,7 @@ const App: React.FC = () => {
     setSelectedStageIdForScoring(String(score.stageId));
     setSelectedPlayerIdForScoring(String(score.playerId));
     setSingleScoreValue(String(score.points));
+    setScoreRank(score.rank?.toString() || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -432,6 +436,7 @@ const App: React.FC = () => {
     setSelectedStageIdForScoring('');
     setSelectedPlayerIdForScoring('');
     setSingleScoreValue('');
+    setScoreRank('');
   };
 
   // --- Sub-View Renderers ---
@@ -774,8 +779,13 @@ const App: React.FC = () => {
           return matchesStage && matchesPlayer;
         });
 
-        // Ordenação por pontos decrescente solicitada pelo usuário
-        const sortedScoresForList = [...filteredScoresForList].sort((a, b) => b.points - a.points);
+        // Ordenação prioritária por Colocação (Rank) manual ascendente
+        const sortedScoresForList = [...filteredScoresForList].sort((a, b) => {
+          if (a.rank && b.rank) return a.rank - b.rank;
+          if (a.rank) return -1;
+          if (b.rank) return 1;
+          return b.points - a.points;
+        });
 
         return (
           <div className="grid md:grid-cols-2 gap-8">
@@ -784,7 +794,10 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <div><label className={labelClasses}>Etapa</label><select value={selectedStageIdForScoring} onChange={e => setSelectedStageIdForScoring(e.target.value)} className={inputClasses}><option value="">Selecione Etapa</option>{stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                 <div><label className={labelClasses}>Jogador</label><select value={selectedPlayerIdForScoring} onChange={e => setSelectedPlayerIdForScoring(e.target.value)} className={inputClasses}><option value="">Selecione Jogador</option>{players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-                <div><label className={labelClasses}>Pontuação</label><input type="number" step="0.5" placeholder="0.0" value={singleScoreValue} onChange={e => setSingleScoreValue(e.target.value)} className={inputClasses} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={labelClasses}>Pontuação</label><input type="number" step="0.5" placeholder="0.0" value={singleScoreValue} onChange={e => setSingleScoreValue(e.target.value)} className={inputClasses} /></div>
+                  <div><label className={labelClasses}>Colocação (Rank)</label><input type="number" step="1" placeholder="Ex: 1" value={scoreRank} onChange={e => setScoreRank(e.target.value)} className={inputClasses} /></div>
+                </div>
                 <div className="flex gap-2">
                     <button type="submit" disabled={isLoading} className={`flex-1 ${buttonClasses}`}>{editingScore ? 'Atualizar Pontuação' : 'Salvar Pontuação'}</button>
                     {editingScore && (
@@ -825,12 +838,17 @@ const App: React.FC = () => {
                       const title = p ? getTitleName(p.titleId) : '';
                       return (
                         <div key={s.id} className="flex justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700 hover:border-indigo-500/50 transition-all group">
-                          <div>
-                            <div className="font-bold text-slate-100">
-                              {title && <span className="text-amber-400 mr-1">{title}</span>}
-                              {p ? p.name : '...'}
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${s.rank === 1 ? 'bg-amber-400 text-amber-900' : 'bg-slate-700 text-slate-300'}`}>
+                              {s.rank || '?'}
                             </div>
-                            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{getSName(s.stageId)}</div>
+                            <div>
+                              <div className="font-bold text-slate-100">
+                                {title && <span className="text-amber-400 mr-1">{title}</span>}
+                                {p ? p.name : '...'}
+                              </div>
+                              <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{getSName(s.stageId)}</div>
+                            </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-indigo-400 font-bold text-xl mr-2">{s.points}</span>
