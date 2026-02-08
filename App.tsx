@@ -5,7 +5,7 @@ import Header from './components/Header';
 import Standings from './components/Standings';
 import Login from './components/Login';
 import { supabase } from './supabase';
-import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon, UsersIcon, FlagIcon, TagIcon } from './components/icons';
+import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon, UsersIcon, FlagIcon, TagIcon, SettingsIcon } from './components/icons';
 
 type FormMode = 'list' | 'create' | 'edit';
 
@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const playerPhotoInputRef = useRef<HTMLInputElement>(null);
+  const settingsLogoInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [playerName, setPlayerName] = useState('');
@@ -67,6 +68,10 @@ const App: React.FC = () => {
   const [scoreFilterStageId, setScoreFilterStageId] = useState<string>('');
   const [scoreFilterPlayerId, setScoreFilterPlayerId] = useState<string>('');
 
+  // Settings Temp State
+  const [tempSystemName, setTempSystemName] = useState('');
+  const [tempSystemLogo, setTempSystemLogo] = useState<string | null>(null);
+
   // --- Core Data Loaders ---
   
   const loadInitialSettings = useCallback(async () => {
@@ -76,8 +81,14 @@ const App: React.FC = () => {
       if (data) {
         const nameSet = data.find(s => s.key === 'systemName');
         const logoSet = data.find(s => s.key === 'systemLogo');
-        if (nameSet) setSystemName(nameSet.value);
-        if (logoSet) setSystemLogo(logoSet.value);
+        if (nameSet) {
+            setSystemName(nameSet.value);
+            setTempSystemName(nameSet.value);
+        }
+        if (logoSet) {
+            setSystemLogo(logoSet.value);
+            setTempSystemLogo(logoSet.value);
+        }
       }
     } catch (err) { console.warn("Settings não encontradas."); }
   }, []);
@@ -135,7 +146,11 @@ const App: React.FC = () => {
     setEditingScore(null);
     setScoreFilterStageId('');
     setScoreFilterPlayerId('');
-  }, [currentView]);
+    if (currentView === 'settings') {
+        setTempSystemName(systemName);
+        setTempSystemLogo(systemLogo);
+    }
+  }, [currentView, systemName, systemLogo]);
 
   // --- Actions ---
 
@@ -194,6 +209,17 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPlayerPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSettingsLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempSystemLogo(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -262,6 +288,28 @@ const App: React.FC = () => {
       setSelectedPlayerIdForScoring('');
     } catch (err: any) {
       alert("Erro ao salvar pontuação: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSettingsSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const updates = [
+        { key: 'systemName', value: tempSystemName },
+        { key: 'systemLogo', value: tempSystemLogo }
+      ];
+      
+      const { error } = await supabase.from('settings').upsert(updates, { onConflict: 'key' });
+      if (error) throw error;
+
+      setSystemName(tempSystemName);
+      setSystemLogo(tempSystemLogo);
+      alert("Configurações salvas com sucesso!");
+    } catch (err: any) {
+      alert("Erro ao salvar configurações: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -713,6 +761,73 @@ const App: React.FC = () => {
             </div>
           </div>
         );
+
+      case 'settings':
+        return (
+            <div className="max-w-2xl mx-auto">
+                <div className={cardClasses}>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400"><SettingsIcon /></div>
+                        <h2 className="text-2xl font-bold text-white">Configurações do Sistema</h2>
+                    </div>
+
+                    <form onSubmit={handleSettingsSave} className="space-y-6">
+                        <div>
+                            <label className={labelClasses}>Nome do Torneio / Organização</label>
+                            <input 
+                                type="text" 
+                                value={tempSystemName} 
+                                onChange={e => setTempSystemName(e.target.value)} 
+                                className={inputClasses} 
+                                placeholder="Ex: IV Circuito Regional de Xadrez"
+                                required 
+                            />
+                        </div>
+
+                        <div>
+                            <label className={labelClasses}>Logotipo do Torneio</label>
+                            <div className="flex items-center gap-6">
+                                <div className="w-24 h-24 bg-slate-900 rounded-xl border-2 border-slate-700 border-dashed flex items-center justify-center overflow-hidden">
+                                    {tempSystemLogo ? (
+                                        <img src={tempSystemLogo} className="w-full h-full object-contain" alt="Preview Logo" />
+                                    ) : (
+                                        <ChessKnightIcon />
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => settingsLogoInputRef.current?.click()}
+                                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                                    >
+                                        <UploadIcon /> Carregar Nova Imagem
+                                    </button>
+                                    <p className="mt-2 text-xs text-slate-500">Recomendado: PNG ou SVG transparente.</p>
+                                    <input 
+                                        type="file" 
+                                        ref={settingsLogoInputRef} 
+                                        onChange={handleSettingsLogoChange} 
+                                        className="hidden" 
+                                        accept="image/*" 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-700">
+                            <button 
+                                type="submit" 
+                                disabled={isLoading} 
+                                className={`w-full ${buttonClasses}`}
+                            >
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+
       default: return <Standings players={players} scores={scores} categories={categories} stages={stages} titles={titles} onFetchPhoto={fetchPlayerPhoto} />;
     }
   };
