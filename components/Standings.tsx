@@ -110,12 +110,30 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
               <div className="w-20 h-20 rounded-full border-2 border-indigo-500 mb-3 overflow-hidden shadow-indigo-500/20 shadow-lg">
                 {hoveredPhoto ? <img src={hoveredPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500"><UsersIcon /></div>}
               </div>
-              <h3 className="font-bold text-white text-lg">{getTitleName(hoveredPlayer.titleId)} {hoveredPlayer.name}</h3>
-              <p className="text-indigo-400 text-xs font-semibold uppercase">{getCategoryName(hoveredPlayer.categoryId)}</p>
+              <h3 className="font-bold text-white text-lg">
+                {getTitleName(hoveredPlayer.titleId) && <span className="text-amber-400 mr-1">{getTitleName(hoveredPlayer.titleId)}</span>}
+                {hoveredPlayer.name}
+              </h3>
+              <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wider">{getCategoryName(hoveredPlayer.categoryId)}</p>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-700 grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-slate-500 uppercase block font-bold">Rating Elo</span><span className="text-white">{hoveredPlayer.rating || 'N/A'}</span></div>
-                <div className="text-right"><span className="text-slate-500 uppercase block font-bold">CBX ID</span><span className="text-white">{hoveredPlayer.cbxId || 'N/A'}</span></div>
+            
+            <div className="mt-4 pt-3 border-t border-slate-700 grid grid-cols-2 gap-y-3 gap-x-4 text-[11px]">
+                <div>
+                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">Rating Elo</span>
+                  <span className="text-white font-medium">{hoveredPlayer.rating || '—'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">Titulação</span>
+                  <span className="text-amber-400 font-bold">{getTitleName(hoveredPlayer.titleId) || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">CBX ID</span>
+                  <span className="text-white font-medium">{hoveredPlayer.cbxId || '—'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">FIDE ID</span>
+                  <span className="text-white font-medium">{hoveredPlayer.fideId || '—'}</span>
+                </div>
             </div>
           </div>
         </div>
