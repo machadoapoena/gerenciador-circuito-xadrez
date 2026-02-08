@@ -67,10 +67,11 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
     return allRankedPlayers.filter(item => item.player.name.toLowerCase().includes(query));
   }, [allRankedPlayers, searchQuery]);
 
-  // Carrega fotos para o Top 10 e líderes de categoria automaticamente
+  // Carrega fotos para o Top 5 e líderes de categoria automaticamente
   useEffect(() => {
     if (!onFetchPhoto) return;
-    const targets = allRankedPlayers.filter(it => it.rank <= 10 || it.isCategoryLeader);
+    // Critério: Rank <= 5 ou Líder de Categoria
+    const targets = allRankedPlayers.filter(it => it.rank <= 5 || it.isCategoryLeader);
     targets.forEach(async (it) => {
       if (!photoCache[it.player.id]) {
         const photo = await onFetchPhoto(it.player.id);
@@ -81,7 +82,8 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
 
   const handleMouseMove = (e: React.MouseEvent) => setTooltipPos({ x: e.clientX + 15, y: e.clientY + 15 });
   
-  const handlePlayerHover = async (playerId: string) => {
+  const handlePlayerHover = async (playerId: string, canShow: boolean) => {
+    if (!canShow) return; // Só permite hover se for elegível para mostrar foto
     setHoveredPlayerId(playerId);
     if (onFetchPhoto && !photoCache[playerId]) {
       const photo = await onFetchPhoto(playerId);
@@ -142,24 +144,52 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
             </tr>
           </thead>
           <tbody>
-            {filteredRankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader, rank }) => (
-              <tr key={player.id} className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors group">
-                <td className="p-4">
-                  <span className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-full ${getRankColor(rank)}`}>{rank}</span>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3 cursor-help" onMouseEnter={() => handlePlayerHover(player.id)} onMouseMove={handleMouseMove} onMouseLeave={() => setHoveredPlayerId(null)}>
-                    <div className="w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border border-slate-500">
-                        {photoCache[player.id] ? <img src={photoCache[player.id]} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-500 text-[10px]"><UsersIcon /></div>}
+            {filteredRankedPlayers.map(({ player, totalPoints, scoresByStage, lowestScore, isCategoryLeader, rank }) => {
+              const shouldShowPhoto = rank <= 5 || isCategoryLeader;
+              
+              return (
+                <tr key={player.id} className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors group">
+                  <td className="p-4">
+                    <span className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-full ${getRankColor(rank)}`}>{rank}</span>
+                  </td>
+                  <td className="p-4">
+                    <div 
+                      className={`flex items-center gap-3 ${shouldShowPhoto ? 'cursor-help' : ''}`}
+                      onMouseEnter={() => handlePlayerHover(player.id, shouldShowPhoto)} 
+                      onMouseMove={handleMouseMove} 
+                      onMouseLeave={() => setHoveredPlayerId(null)}
+                    >
+                      {shouldShowPhoto && (
+                        <div className="w-8 h-8 rounded-full bg-slate-600 overflow-hidden flex-shrink-0 border border-slate-500 shadow-sm">
+                            {photoCache[player.id] ? (
+                              <img src={photoCache[player.id]} className="w-full h-full object-cover" alt={player.name} />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-500 text-[10px]">
+                                <UsersIcon />
+                              </div>
+                            )}
+                        </div>
+                      )}
+                      <span className="text-sm md:text-base font-medium">
+                        {getTitleName(player.titleId) && <span className="text-amber-400 font-bold mr-1">{getTitleName(player.titleId)}</span>}
+                        {player.name}
+                      </span>
                     </div>
-                    <span className="text-sm md:text-base font-medium">{getTitleName(player.titleId)} {player.name}</span>
-                  </div>
-                </td>
-                <td className="p-4 hidden sm:table-cell"><span className="text-slate-300 text-sm">{getCategoryName(player.categoryId)} {isCategoryLeader && '🏆'}</span></td>
-                {stages.map(s => <td key={s.id} className="p-4 text-center font-mono text-sm">{scoresByStage.get(s.id) ?? '—'}</td>)}
-                <td className="p-4 text-right font-bold text-indigo-400 text-lg">{totalPoints}</td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-4 hidden sm:table-cell">
+                    <span className="text-slate-300 text-sm">
+                      {getCategoryName(player.categoryId)} {isCategoryLeader && '🏆'}
+                    </span>
+                  </td>
+                  {stages.map(s => (
+                    <td key={s.id} className="p-4 text-center font-mono text-sm">
+                      {scoresByStage.get(s.id) ?? '—'}
+                    </td>
+                  ))}
+                  <td className="p-4 text-right font-bold text-indigo-400 text-lg">{totalPoints}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
