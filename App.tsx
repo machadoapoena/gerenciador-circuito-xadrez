@@ -7,6 +7,9 @@ import Login from './components/Login';
 import { supabase } from './supabase';
 import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon, UsersIcon, FlagIcon, TagIcon, SettingsIcon } from './components/icons';
 
+// Tipagem global para o pdfmake (declarado no index.html)
+declare var pdfMake: any;
+
 type FormMode = 'list' | 'create' | 'edit';
 
 const App: React.FC = () => {
@@ -166,6 +169,7 @@ const App: React.FC = () => {
   const getPName = (id: string) => players.find(p => String(p.id) === String(id))?.name || '...';
   const getSName = (id: string) => stages.find(s => String(s.id) === String(id))?.name || '...';
   const getTitleName = (id?: string) => titles.find(t => String(t.id) === String(id))?.name || '';
+  const getCategoryName = (id?: string) => categories.find(c => String(c.id) === String(id))?.name || 'N/A';
 
   const confirmDelete = async () => {
     if (!deleteModal) return;
@@ -188,6 +192,92 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleExportPDF = () => {
+    if (typeof pdfMake === 'undefined') {
+        alert("As bibliotecas de PDF ainda estão carregando. Tente novamente em alguns segundos.");
+        return;
+    }
+
+    // Calcular Classificação (mesma lógica do Standings.tsx)
+    const scoresByPlayer = new Map<string, Score[]>();
+    scores.forEach(score => {
+      const pid = String(score.playerId);
+      if (!scoresByPlayer.has(pid)) scoresByPlayer.set(pid, []);
+      scoresByPlayer.get(pid)!.push(score);
+    });
+
+    const processed = players.map(player => {
+      const playerScoresList = scoresByPlayer.get(String(player.id)) || [];
+      const scorePoints = playerScoresList.map(s => s.points);
+      const sum = scorePoints.reduce((acc, p) => acc + p, 0);
+      let displayTotal = 0;
+      if (scorePoints.length > 1) {
+        const lowest = Math.min(...scorePoints);
+        displayTotal = sum - lowest;
+      } else { displayTotal = sum; }
+      return { player, totalPoints: displayTotal };
+    }).sort((a, b) => b.totalPoints - a.totalPoints);
+
+    // Estrutura do documento pdfmake
+    const docDefinition = {
+      content: [
+        { text: systemName, style: 'mainHeader' },
+        { text: `Relatório de Classificação Geral - ${new Date().toLocaleDateString()}`, style: 'subHeader' },
+        {
+          table: {
+            headerRows: 1,
+            widths: [40, 'auto', 'auto', 50, 50, 50, 40],
+            body: [
+              [
+                { text: 'Rank', style: 'tableHeader' },
+                { text: 'Atleta', style: 'tableHeader' },
+                { text: 'Categoria', style: 'tableHeader' },
+                { text: 'Elo', style: 'tableHeader' },
+                { text: 'CBX', style: 'tableHeader' },
+                { text: 'FIDE', style: 'tableHeader' },
+                { text: 'Pts', style: 'tableHeader' },
+              ],
+              ...processed.map((item, index) => {
+                const rank = index + 1;
+                let rankText: any = rank;
+                let rankColor = '#f1f5f9'; // slate-100
+                let textColor = '#1e293b'; // slate-800
+
+                if (rank === 1) { rankText = '🏆 1º'; rankColor = '#f59e0b'; textColor = '#ffffff'; }
+                else if (rank === 2) { rankText = '🥈 2º'; rankColor = '#94a3b8'; textColor = '#ffffff'; }
+                else if (rank === 3) { rankText = '🥉 3º'; rankColor = '#b45309'; textColor = '#ffffff'; }
+
+                const playerTitle = getTitleName(item.player.titleId);
+                const playerName = playerTitle ? `${playerTitle} ${item.player.name}` : item.player.name;
+
+                return [
+                  { text: rankText, fillColor: rankColor, color: textColor, alignment: 'center', bold: true },
+                  { text: playerName, bold: playerTitle !== '' },
+                  getCategoryName(item.player.categoryId),
+                  item.player.rating || '—',
+                  item.player.cbxId || '—',
+                  item.player.fideId || '—',
+                  { text: item.totalPoints.toString(), bold: true, alignment: 'right', color: '#4f46e5' }
+                ];
+              })
+            ]
+          },
+          layout: 'lightHorizontalLines'
+        },
+        { text: '\n\n* Classificação calculada considerando o descarte da menor pontuação (para atletas com mais de 1 etapa disputada).', style: 'footer' }
+      ],
+      styles: {
+        mainHeader: { fontSize: 22, bold: true, color: '#4f46e5', margin: [0, 0, 0, 5], alignment: 'center' },
+        subHeader: { fontSize: 12, italic: true, color: '#64748b', margin: [0, 0, 0, 20], alignment: 'center' },
+        tableHeader: { bold: true, fontSize: 11, color: '#ffffff', fillColor: '#1e293b', margin: [0, 5, 0, 5] },
+        footer: { fontSize: 9, italic: true, color: '#94a3b8' }
+      },
+      defaultStyle: { fontSize: 10 }
+    };
+
+    pdfMake.createPdf(docDefinition).download(`classificacao_${systemName.toLowerCase().replace(/\s+/g, '_')}.pdf`);
   };
 
   const resetPlayerForm = () => {
@@ -839,7 +929,16 @@ const App: React.FC = () => {
           <div className="w-1/3 h-full bg-indigo-500 animate-[loading_1.5s_infinite_linear] shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
         </div>
       )}
-      <Header currentView={currentView} setCurrentView={setCurrentView} isAuthenticated={isAuthenticated} onLogout={handleLogout} onImport={() => {}} onExport={() => {}} systemName={systemName} systemLogo={systemLogo} />
+      <Header 
+        currentView={currentView} 
+        setCurrentView={setCurrentView} 
+        isAuthenticated={isAuthenticated} 
+        onLogout={handleLogout} 
+        onImport={() => {}} 
+        onExport={handleExportPDF} 
+        systemName={systemName} 
+        systemLogo={systemLogo} 
+      />
       <main className="container mx-auto p-4 md:p-8">
         {fetchError ? renderError() : renderView()}
       </main>
