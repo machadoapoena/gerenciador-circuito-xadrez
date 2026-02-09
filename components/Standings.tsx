@@ -130,37 +130,43 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
   return (
     <div className="bg-slate-800 p-4 md:p-8 rounded-lg shadow-xl overflow-hidden relative">
       {hoveredPlayer && (
-        <div className="fixed z-[9999] pointer-events-none animate-in fade-in zoom-in-95 duration-200" style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y}px`, maxWidth: '300px' }}>
-          <div className="bg-slate-900 border border-indigo-500/30 rounded-xl shadow-2xl p-5 backdrop-blur-md bg-opacity-95">
+        <div className="fixed z-[9999] pointer-events-none animate-in fade-in zoom-in-95 duration-200" style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y}px`, width: '380px', maxWidth: '90vw' }}>
+          <div className="bg-slate-900 border border-indigo-500/40 rounded-2xl shadow-2xl p-6 backdrop-blur-md bg-opacity-98">
             <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full border-2 border-indigo-500 mb-3 overflow-hidden shadow-indigo-500/20 shadow-lg">
+              <div className="w-28 h-28 rounded-full border-4 border-indigo-500/50 mb-4 overflow-hidden shadow-indigo-500/30 shadow-2xl">
                 {hoveredPhoto ? <img src={hoveredPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500"><UsersIcon /></div>}
               </div>
-              <h3 className="font-bold text-white text-lg">
-                {getTitleName(hoveredPlayer.titleId) && <span className="text-amber-400 mr-1">{getTitleName(hoveredPlayer.titleId)}</span>}
+              <h3 className="font-bold text-white text-xl leading-tight">
+                {getTitleName(hoveredPlayer.titleId) && <span className="text-amber-400 mr-1.5">{getTitleName(hoveredPlayer.titleId)}</span>}
                 {hoveredPlayer.name}
               </h3>
-              <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wider">{getCategoryName(hoveredPlayer.categoryId)}</p>
+              <p className="text-indigo-400 text-sm font-bold uppercase tracking-widest mt-1.5">{getCategoryName(hoveredPlayer.categoryId)}</p>
             </div>
             
-            <div className="mt-4 pt-3 border-t border-slate-700 grid grid-cols-2 gap-y-3 gap-x-4 text-[11px]">
-                <div>
-                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">Rating Elo</span>
-                  <span className="text-white font-medium">{hoveredPlayer.rating || '—'}</span>
+            <div className="mt-6 pt-5 border-t border-slate-700/50 grid grid-cols-2 gap-y-4 gap-x-6 text-[13px]">
+                <div className="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+                  <span className="text-slate-500 uppercase block font-bold text-[10px] mb-1">Rating Elo</span>
+                  <span className="text-white font-bold text-base">{hoveredPlayer.rating || '—'}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">Titulação</span>
-                  <span className="text-amber-400 font-bold">{getTitleName(hoveredPlayer.titleId) || '—'}</span>
+                <div className="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50 text-right">
+                  <span className="text-slate-500 uppercase block font-bold text-[10px] mb-1">Titulação</span>
+                  <span className="text-amber-400 font-black text-base">{getTitleName(hoveredPlayer.titleId) || 'N/A'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">CBX ID</span>
+                <div className="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+                  <span className="text-slate-500 uppercase block font-bold text-[10px] mb-1">CBX ID</span>
                   <span className="text-white font-medium">{hoveredPlayer.cbxId || '—'}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-slate-500 uppercase block font-bold text-[9px] mb-0.5">FIDE ID</span>
+                <div className="bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50 text-right">
+                  <span className="text-slate-500 uppercase block font-bold text-[10px] mb-1">FIDE ID</span>
                   <span className="text-white font-medium">{hoveredPlayer.fideId || '—'}</span>
                 </div>
             </div>
+            {hoveredPlayer.email && (
+              <div className="mt-4 text-center">
+                <span className="text-slate-500 uppercase block font-bold text-[10px] mb-1">Contato</span>
+                <span className="text-slate-300 text-xs italic">{hoveredPlayer.email}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
