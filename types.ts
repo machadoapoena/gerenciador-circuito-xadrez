@@ -16,6 +16,7 @@ export interface Stage {
   id: string;
   name: string;
   url?: string;
+  date?: string;
 }
 
 export interface Score {

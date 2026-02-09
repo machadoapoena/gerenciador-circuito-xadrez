@@ -55,6 +55,7 @@ const App: React.FC = () => {
   
   const [stageName, setStageName] = useState('');
   const [stageUrl, setStageUrl] = useState('');
+  const [stageDate, setStageDate] = useState('');
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   
   const [categoryName, setCategoryName] = useState('');
@@ -76,6 +77,13 @@ const App: React.FC = () => {
   // Settings Temp State
   const [tempSystemName, setTempSystemName] = useState('');
   const [tempSystemLogo, setTempSystemLogo] = useState<string | null>(null);
+
+  // --- Utils ---
+  const formatDateBR = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
 
   // --- Core Data Loaders ---
   
@@ -109,7 +117,9 @@ const App: React.FC = () => {
         let query = supabase.from(table).select('*');
         if (table === 'players') query = supabase.from('players').select('id, name, categoryId, birthDate, cbxId, fideId, email, rating, titleId, photoUrl').order('name');
         else if (table === 'scores') query = supabase.from('scores').select('*');
+        else if (table === 'stages') query = supabase.from('stages').select('*').order('date', { ascending: true });
         else query = supabase.from(table).select('*').order('name');
+        
         const { data, error } = await query;
         if (error && error.code !== '42P01') throw new Error(`Erro ao acessar ${table}: ${error.message}`);
         if (data) {
@@ -707,8 +717,15 @@ const App: React.FC = () => {
         if (formMode === 'list') return (
           <div className="max-w-5xl mx-auto">
             {renderSectionHeader('Etapas do Torneio', <FlagIcon />)}
-            {renderTable(['Nome', 'URL'], stages.map(s => ({ id: s.id, name: s.name, url: s.url })), 
-              (item) => { setEditingStage(item); setStageName(item.name); setStageUrl(item.url || ''); setFormMode('edit'); },
+            {renderTable(['Nome', 'Data', 'URL'], stages.map(s => ({ id: s.id, name: s.name, date: formatDateBR(s.date), url: s.url })), 
+              (item) => { 
+                const originalStage = stages.find(s => s.id === item.id);
+                setEditingStage(originalStage || null); 
+                setStageName(item.name); 
+                setStageDate(originalStage?.date || '');
+                setStageUrl(item.url || ''); 
+                setFormMode('edit'); 
+              },
               (item) => setDeleteModal({ isOpen: true, id: item.id, name: item.name, type: 'stage' })
             )}
           </div>
@@ -721,16 +738,16 @@ const App: React.FC = () => {
                 e.preventDefault();
                 setIsLoading(true);
                 try {
-                  const dataObj = { name: stageName, url: stageUrl || null };
+                  const dataObj = { name: stageName, url: stageUrl || null, date: stageDate || null };
                   if (editingStage) {
                     await supabase.from('stages').update(dataObj).eq('id', editingStage.id);
-                    setStages(prev => prev.map(s => s.id === editingStage.id ? { ...s, ...dataObj } : s));
+                    setStages(prev => prev.map(s => s.id === editingStage.id ? { ...s, ...dataObj } : s).sort((a,b) => (a.date || '').localeCompare(b.date || '')));
                   } else {
                     const newId = crypto.randomUUID();
                     const { data } = await supabase.from('stages').insert({ ...dataObj, id: newId }).select().single();
-                    if (data) setStages(prev => [...prev, data]);
+                    if (data) setStages(prev => [...prev, data].sort((a,b) => (a.date || '').localeCompare(b.date || '')));
                   }
-                  setFormMode('list'); setStageName(''); setStageUrl(''); setEditingStage(null);
+                  setFormMode('list'); setStageName(''); setStageUrl(''); setStageDate(''); setEditingStage(null);
                 } catch (err: any) { alert(err.message); } finally { setIsLoading(false); }
               }}>
                 <div className="space-y-4 mb-8">
@@ -739,12 +756,16 @@ const App: React.FC = () => {
                     <input type="text" placeholder="Ex: 1ª Etapa - Maringá" value={stageName} onChange={e => setStageName(e.target.value)} className={inputClasses} required />
                   </div>
                   <div>
+                    <label className={labelClasses}>Data da Etapa</label>
+                    <input type="date" value={stageDate} onChange={e => setStageDate(e.target.value)} className={inputClasses} />
+                  </div>
+                  <div>
                     <label className={labelClasses}>Link da Etapa (Chess-Results / Outros)</label>
                     <input type="url" placeholder="https://..." value={stageUrl} onChange={e => setStageUrl(e.target.value)} className={inputClasses} />
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setFormMode('list')} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl">Cancelar</button>
+                  <button type="button" onClick={() => { setFormMode('list'); setStageDate(''); setStageName(''); setStageUrl(''); }} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl">Cancelar</button>
                   <button type="submit" disabled={isLoading} className={`flex-1 ${buttonClasses}`}>Salvar Etapa</button>
                 </div>
               </form>
