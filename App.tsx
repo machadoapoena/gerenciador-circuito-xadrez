@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [scores, setScores] = useState<Score[]>([]);
   const [systemName, setSystemName] = useState('Torneio de Xadrez');
   const [systemLogo, setSystemLogo] = useState<string | null>(null);
+  const [cachedImages, setCachedImages] = useState<Map<string, string>>(new Map());
 
   // Status States
   const [currentView, setCurrentView] = useState<View>('standings');
@@ -85,6 +86,35 @@ const App: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
+  // New utility function to fetch and cache images
+  const cacheImage = useCallback(async (url: string) => {
+    if (!url || cachedImages.has(url)) return;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${url}`);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        return new Promise<string>((resolve) => {
+            reader.onloadend = () => {
+                const base64data = reader.result as string;
+                setCachedImages(prev => new Map(prev).set(url, base64data));
+                resolve(base64data);
+            };
+        });
+    } catch (error) {
+        console.error(`Error caching image ${url}:`, error);
+        return undefined;
+    }
+  }, [cachedImages]);
+
+  // Helper to get image source from cache or original URL
+  const getImageSrc = useCallback((url: string | null) => {
+      if (!url) return undefined;
+      return cachedImages.get(url) || url;
+  }, [cachedImages]);
+
   // --- Core Data Loaders ---
   
   const loadInitialSettings = useCallback(async () => {
@@ -101,10 +131,11 @@ const App: React.FC = () => {
         if (logoSet) {
             setSystemLogo(logoSet.value);
             setTempSystemLogo(logoSet.value);
+            cacheImage(logoSet.value); // Call cacheImage here
         }
       }
     } catch (err) { console.warn("Settings não encontradas."); }
-  }, []);
+  }, [cacheImage]);
 
   const fetchData = useCallback(async (tables: string[]) => {
     const toLoad = tables.filter(t => !loadedModules.has(t));
@@ -126,7 +157,15 @@ const App: React.FC = () => {
           switch (table) {
             case 'categories': setCategories(data as Category[]); break;
             case 'titles': setTitles(data as Title[]); break;
-            case 'players': setPlayers(data as Player[]); break;
+            case 'players':
+                setPlayers(data as Player[]);
+                // Cache player photos
+                data.forEach((player: Player) => {
+                    if (player.photoUrl) {
+                        cacheImage(player.photoUrl);
+                    }
+                });
+                break;
             case 'stages': setStages(data as Stage[]); break;
             case 'scores': setScores(data as Score[]); break;
           }
@@ -135,7 +174,7 @@ const App: React.FC = () => {
       }
       setLoadedModules(newLoaded);
     } catch (err: any) { setFetchError(err.message); } finally { setIsLoading(false); }
-  }, [loadedModules]);
+  }, [loadedModules, cacheImage]);
 
   const fetchPlayerPhoto = async (playerId: string) => {
     try {
