@@ -408,7 +408,7 @@ const App: React.FC = () => {
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('gerenciador_torneio_xadrez')
           .upload(filePath, selectedPhotoFile, {
-            cacheControl: '3600',
+            cacheControl: '31536000',
             upsert: true
           });
 
