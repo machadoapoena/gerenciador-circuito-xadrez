@@ -106,7 +106,32 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
       }
 
       // Caso contrário (Múltiplas etapas e Visão Geral): Ordenação padrão por pontos (Geral com descarte)
-      return b.totalPoints - a.totalPoints;
+      if (b.totalPoints !== a.totalPoints) {
+        return b.totalPoints - a.totalPoints;
+      }
+
+      // Critério de desempate: Confronto direto (quem ficou melhor em mais etapas)
+      let aWins = 0;
+      let bWins = 0;
+
+      stages.forEach(stage => {
+        const stageId = String(stage.id);
+        const rankA = a.ranksByStage.get(stageId);
+        const rankB = b.ranksByStage.get(stageId);
+
+        if (rankA !== undefined && rankB !== undefined) {
+          if (rankA < rankB) aWins++;
+          else if (rankB < rankA) bWins++;
+        } else if (rankA !== undefined && rankB === undefined) {
+          // Se apenas A participou da etapa, conta como vitória para A
+          aWins++;
+        } else if (rankA === undefined && rankB !== undefined) {
+          // Se apenas B participou da etapa, conta como vitória para B
+          bWins++;
+        }
+      });
+
+      return bWins - aWins;
     });
 
     const categoryLeaders = new Set<string>();
