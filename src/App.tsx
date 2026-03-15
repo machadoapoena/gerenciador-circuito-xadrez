@@ -4,7 +4,7 @@ import { Player, Stage, Score, View, Category, Title } from './types';
 import Header from './components/Header';
 import Standings from './components/Standings';
 import Login from './components/Login';
-import { supabase } from './supabase';
+import { supabase } from './lib/supabase';
 import { PlusIcon, TrashIcon, PencilIcon, ChessKnightIcon, AwardIcon, UploadIcon, UsersIcon, FlagIcon, TagIcon, SettingsIcon } from './components/icons';
 
 // Tipagem global para o pdfmake (declarado no index.html)
