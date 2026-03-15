@@ -78,16 +78,12 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
 
       if (selectedStageView === 'all') {
         const scorePoints = playerScoresList.map(s => s.points);
-        const sum = scorePoints.reduce((acc, p) => acc + p, 0);
-        if (scorePoints.length > 1) {
-          lowestScoreValue = Math.min(...scorePoints);
-          displayTotal = sum - lowestScoreValue;
-        } else { displayTotal = sum; }
+        displayTotal = scorePoints.reduce((acc, p) => acc + p, 0);
       } else { 
         displayTotal = scoresByStage.get(selectedStageView) || 0; 
       }
 
-      return { player, totalPoints: displayTotal, scoresByStage, ranksByStage, lowestScore: lowestScoreValue };
+      return { player, totalPoints: displayTotal, scoresByStage, ranksByStage, lowestScore: null };
     });
 
     // Lógica de ordenação customizada
@@ -312,7 +308,7 @@ const Standings: React.FC<StandingsProps> = ({ players, scores, categories, stag
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <input type="text" placeholder="Buscar Jogador..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg p-2.5 w-full sm:w-64" />
             <select value={selectedStageView} onChange={(e) => setSelectedStageView(e.target.value)} className="bg-slate-700 border border-slate-600 text-slate-100 text-sm rounded-lg p-2.5 w-full sm:w-64">
-              <option value="all">🏆 Geral (com descarte)</option>
+              <option value="all">🏆 Geral (Soma Total)</option>
               {stages.map(s => <option key={s.id} value={s.id}>📍 {s.name}</option>)}
             </select>
           </div>
